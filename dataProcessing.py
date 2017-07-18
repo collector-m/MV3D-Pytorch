@@ -62,3 +62,4 @@ c = getCalibMatrix(PATH_TO_KITTI, 5)
 
 b = removePoints(a,c,bc)
 
+print('hello')
