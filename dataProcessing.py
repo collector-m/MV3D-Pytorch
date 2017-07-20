@@ -1,4 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import time
 
 def getCalibMatrix(dataPath, frameNum):
     # load calibration data
@@ -48,13 +51,116 @@ def removePoints(PointCloud, Calib, BoundaryCond):
 
     return PointCloud
 
+def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
+    # 704 x 800 x (M+2)
+    M = 8; 
+    min_z = BoundaryCond['minZ']; max_z = BoundaryCond['maxZ']; gap = (max_z - min_z) / M;
+    Height = np.int_(BoundaryCond['maxX'] / Discretization)
+    Width = np.int_(BoundaryCond['maxY'] / Discretization) * 2
+    BVFeautre = np.zeros((Height,Width, M + 2))
+
+    # Discretize Feature Map
+    PointCloud = np.copy(PointCloud_)
+    PointCloud[:,0] = np.int_(np.floor(PointCloud[:,0] / Discretization))
+    PointCloud[:,1] = np.int_(np.floor(PointCloud[:,1] / Discretization) + Width/2)
+
+    # sort-3times
+    indices = np.lexsort((-PointCloud[:,2],PointCloud[:,1],PointCloud[:,0]))
+    PointCloud = PointCloud[indices]
+
+    # Height Map
+    heightMap = np.zeros((Height,Width,M))        
+    for i in range(M):
+        lower = min_z + gap * i
+        upper = min_z + gap * (i + 1)
+        mask_frac = np.where((PointCloud[:,2] >= lower) & (PointCloud[:,2]< upper))
+        PointCloud_frac = PointCloud[mask_frac]
+
+        _, indices = np.unique(PointCloud_frac[:,0:2], axis = 0, return_index=True)
+        PointCloud_frac = PointCloud_frac[indices]
+        
+        heightMap[np.int_(PointCloud_frac[:,0]), np.int_(PointCloud_frac[:,1]), i] = PointCloud_frac[:,2]
+        """
+        plt.imshow(heightMap[:,:,i])
+        plt.show(block=False)
+        plt.pause(2)
+        plt.close()
+        """
+    # Intensity Map & DensityMap
+    intensityMap = np.zeros((Height,Width))
+    densityMap = np.zeros((Height,Width))
+    
+    _, indices, counts = np.unique(PointCloud[:,0:2], axis = 0, return_index=True,return_counts = True)
+    PointCloud_top = PointCloud[indices]
+
+    normalizedCounts = np.minimum(1.0, np.log(counts + 1)/np.log(64))
+    
+    intensityMap[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1])] = PointCloud_top[:,3]
+    densityMap[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1])] = normalizedCounts
+    """
+    plt.imshow(densityMap[:,:])
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    plt.imshow(intensityMap[:,:])
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    """
+    output = np.zeros((Height,Width,M+2))
+    output[:,:,0:M] = heightMap
+    output[:,:,M] = densityMap
+    output[:,:,M+1] = intensityMap
+    return output
+    
+def makeFVFeature(PointCloud, FeatureSize):
+    height = FeatureSize['height']
+    width = FeatureSize['width']
+
+    nPoint = PointCloud.shape[0]
+    x = PointCloud[:,0]
+    y = PointCloud[:,1]
+    z = PointCloud[:,2]
+    xy = PointCloud[:,0:2]
+    #
+    c = np.arctan2(y, x)
+    r = np.arctan2(z, np.linalg.norm(xy,axis=1))
+
+    # Normalizing the coordinate of c and r
+    # Some issuses occurs when doing ROI pooling
+    minC = np.amin(c); maxC = np.amax(c) 
+    minR = np.amin(r); maxR = np.amax(r)
+
+    c = np.around((c - minC) * (width - 1) / (maxC - minC)) 
+    r = np.around((r - minR) * (height - 1) / (maxR - minR)) 
+    
+    coordinate = np.int_(np.zeros((nPoint,2)))
+    featureValue = np.zeros((nPoint,3))
+
+    coordinate[:,0] = np.int_(r)
+    coordinate[:,1] = np.int_(c)
+    featureValue[:,0] = z # Height
+    featureValue[:,1] = np.linalg.norm(PointCloud[:,0:3],axis=1) # Distance
+    featureValue[:,2] = PointCloud[:,3] # Intensity
+
+    #featureValue = featureValue[np.argsort(featureValue[:,1])]
+    #featureValue = featureValue[np.argsort(featureValue[:,0])]
+    output = np.zeros((height,width,3))
+
+    output[coordinate[:,0],coordinate[:,1],:] = featureValue[:,0:3]
+    return output
+
+#    return
 
 # How can I define these in main script
 PATH_TO_KITTI = '/home/dongwoo/Project/dataset/KITTI/Object/training/' 
 bc={}
 bc['minX'] = 0; bc['maxX'] = 70.4; bc['minY'] = -40; bc['maxY'] = 40
+bc['minZ'] = - 2.7; bc['maxZ'] = 2.9
 bc['imgH'] = 370; bc['imgW'] = 1224
-
+FeatureSize = {}
+FeatureSize['height'] = 64
+FeatureSize['width'] = 512
 # load point cloud data
 a = np.fromfile('./000005.bin', dtype=np.float32).reshape(-1, 4)
 
@@ -62,4 +168,8 @@ c = getCalibMatrix(PATH_TO_KITTI, 5)
 
 b = removePoints(a,c,bc)
 
-print('hello')
+d = makeFVFeature(b, FeatureSize)
+t = time.time()
+e = makeBVFeature(b, bc ,0.1)
+elapsed = time.time() - t
+print ('Dongwoos implementation',elapsed)
