@@ -53,7 +53,7 @@ def removePoints(PointCloud, Calib, BoundaryCond):
 
 def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
     # 704 x 800 x (M+2)
-    M = 8; 
+    M = 16; 
     min_z = BoundaryCond['minZ']; max_z = BoundaryCond['maxZ']; gap = (max_z - min_z) / M;
     Height = np.int_(BoundaryCond['maxX'] / Discretization)
     Width = np.int_(BoundaryCond['maxY'] / Discretization) * 2
