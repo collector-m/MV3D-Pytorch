@@ -75,17 +75,18 @@ def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
         upper = min_z + gap * (i + 1)
         mask_frac = np.where((PointCloud[:,2] >= lower) & (PointCloud[:,2]< upper))
         PointCloud_frac = PointCloud[mask_frac]
-
-        _, indices = np.unique(PointCloud_frac[:,0:2], axis = 0, return_index=True)
-        PointCloud_frac = PointCloud_frac[indices]
         
-        heightMap[np.int_(PointCloud_frac[:,0]), np.int_(PointCloud_frac[:,1]), i] = PointCloud_frac[:,2]
-        """
+        if PointCloud_frac.shape[0] != 0 :
+            _, indices = np.unique(PointCloud_frac[:,0:2], axis = 0, return_index=True)
+            PointCloud_frac = PointCloud_frac[indices]
+            
+            heightMap[np.int_(PointCloud_frac[:,0]), np.int_(PointCloud_frac[:,1]), i] = PointCloud_frac[:,2]
+        
         plt.imshow(heightMap[:,:,i])
         plt.show(block=False)
         plt.pause(2)
         plt.close()
-        """
+        
     # Intensity Map & DensityMap
     intensityMap = np.zeros((Height,Width))
     densityMap = np.zeros((Height,Width))
@@ -97,11 +98,13 @@ def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
     
     intensityMap[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1])] = PointCloud_top[:,3]
     densityMap[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1])] = normalizedCounts
-    """
+    
     plt.imshow(densityMap[:,:])
+    plt.show()
     plt.show(block=False)
     plt.pause(2)
     plt.close()
+    """
     plt.imshow(intensityMap[:,:])
     plt.show(block=False)
     plt.pause(2)
@@ -162,9 +165,9 @@ FeatureSize = {}
 FeatureSize['height'] = 64
 FeatureSize['width'] = 512
 # load point cloud data
-a = np.fromfile('./000005.bin', dtype=np.float32).reshape(-1, 4)
+a = np.fromfile('./000050.bin', dtype=np.float32).reshape(-1, 4)
 
-c = getCalibMatrix(PATH_TO_KITTI, 5)
+c = getCalibMatrix(PATH_TO_KITTI, 50)
 
 b = removePoints(a,c,bc)
 
