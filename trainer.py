@@ -25,13 +25,13 @@ def load_dummy_data():
     rgb   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/rgb.npy')
     lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/lidar.npy')
     top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top.npy')
-    front = np.zeros((1,1),dtype=np.float32)
+    front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/front.npy')
     gt_labels    = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy')
     gt_boxes3d   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy')
     gt_top_boxes = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_top_boxes.npy')
 
     top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top_image.png')
-    front_image = np.zeros((1,1,3),dtype=np.float32)
+    front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/front_image.png')
 
     rgb =(rgb*255).astype(np.uint8)
     rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
@@ -58,42 +58,55 @@ def box_to_box3d(boxes):
 
 def load_dummy_datas():
 
-    num_frames = 154
-    rgbs      =[]
-    lidars    =[]
-    tops      =[]
-    fronts    =[]
-    gt_labels =[]
-    gt_boxes3d=[]
+    drives = ['0001', '0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+                                   '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
+    num_frames = [114,83,160,453,238,150,320,120,276,28,444,300,367,379,84,389,346,439]
+    rgbs      =[None] * 4690
+    lidars    =[None] * 4690
+    tops      =[None] * 4690
+    fronts    =[None] * 4690
+    gt_labels =[None] * 4690
+    gt_boxes3d=[None] * 4690
 
-    top_images  =[]
-    front_images=[]
-
+    top_images  =[None] * 4690
+    front_images=[None] * 4690
+    num_drive = -1
+    tmp = 0
     fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
-    for n in range(num_frames):
+    for num_frame in num_frames:
+        temp = tmp+1;
+      for n in range(tmp+1,num_frame+tmp):
         print(n)
 
-        rgb   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/rgb/rgb_%05d.png'%n,1)
-        lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/lidar/lidar_%05d.npy'%n)
-        top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top/top_%05d.npy'%n)
-        front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/front/front_%05d.npy'%n)
-        gt_label  = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_labels/gt_labels_%05d.npy'%n)
-        gt_box3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_boxes3d/gt_boxes3d_%05d.npy'%n)
+        rgb   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/rgb/rgb_%05d.png'%n-temp,1)
+        lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/lidar/lidar_%05d.npy'%n-temp)
+        top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top/top_%05d.npy'%n-temp)
+        front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front/front_%05d.npy'%n-temp)
+        gt_label  = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%n-temp)
+        gt_box3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n-temp)
 
 
-        top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image/top_image_%05d.png'%n,1)
-        front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/front_image/front_image_%05d.png'%n,1)
+        top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top_image/top_image_%05d.png'%n-temp,1)
+        front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front_image/front_image_%05d.png'%n-temp,1)
 
-        rgbs.append(rgb)
-        lidars.append(lidar)
-        tops.append(top)
-        fronts.append(front)
-        gt_labels.append(gt_label)
-        gt_boxes3d.append(gt_box3d)
+        #rgbs.append(rgb)
+        #lidars.append(lidar)
+        #tops.append(top)
+        #fronts.append(front)
+        #gt_labels.append(gt_label)
+        #gt_boxes3d.append(gt_box3d)
 
-        top_images.append(top_image)
-        front_images.append(front_image)
-
+        #top_images.append(top_image)
+        #front_images.append(front_image)
+        rgbs[n] = rgb
+        lidars[n] = lidar
+        tops[n] = top
+        fronts[n] = front
+        gt_labels[n] = gt_label
+        gt_boxes3d[n] = gt_box3d
+        top_images[n] = top_image
+        front_images[n] = front_image
+        tmp = n
 
         # explore dataset:
 

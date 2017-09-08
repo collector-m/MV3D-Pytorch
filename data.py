@@ -358,217 +358,220 @@ if __name__ == '__main__':
 
     basedir = '/home/mohsen/Desktop/didi-udacity-2017-master/data'
     date  = '2011_09_26'
-    drive = '0005'
+    drives = ['0001', '0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+                                   '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
 
-    # The range argument is optional - default is None, which loads the whole dataset
-    dataset = pykitti.raw(basedir, date, drive) #, range(0, 50, 5))
+    for drive in drives:
 
-    # Load some data
-    dataset.load_calib()         # Calibration data are accessible as named tuples
-    dataset.load_timestamps()    # Timestamps are parsed into datetime objects
-    dataset.load_oxts()          # OXTS packets are loaded as named tuples
-    dataset.load_gray()         # Left/right images are accessible as named tuples
-    dataset.load_rgb()          # Left/right images are accessible as named tuples
-    dataset.load_velo()          # Each scan is a Nx4 array of [x,y,z,reflectance]
+        # The range argument is optional - default is None, which loads the whole dataset
+        dataset = pykitti.raw(basedir, date, drive) #, range(0, 50, 5))
 
-    tracklet_file = '/home/mohsen/Desktop/didi-udacity-2017-master/data/2011_09_26/2011_09_26_drive_0005_sync/tracklet_labels.xml'
+        # Load some data
+        dataset.load_calib()         # Calibration data are accessible as named tuples
+        dataset.load_timestamps()    # Timestamps are parsed into datetime objects
+        dataset.load_oxts()          # OXTS packets are loaded as named tuples
+        dataset.load_gray()         # Left/right images are accessible as named tuples
+        dataset.load_rgb()          # Left/right images are accessible as named tuples
+        dataset.load_velo()          # Each scan is a Nx4 array of [x,y,z,reflectance]
 
-    num_frames=len(dataset.velo)  #154
-    objects = read_objects(tracklet_file, num_frames)
+        tracklet_file = '/home/mohsen/Desktop/didi-udacity-2017-master/data/2011_09_26/2011_09_26_drive_'+drive+'_sync/tracklet_labels.xml'
 
-    ############# convert   ###########################  ************************************
-    os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg')
+        num_frames=len(dataset.velo)  #154
+        objects = read_objects(tracklet_file, num_frames)
 
-    if 0:  ## rgb images --------------------
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/rgb')
+        ############# convert   ###########################  ************************************
+        #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive)
 
-        for n in range(num_frames):
-            print(n)
-            rgb = dataset.rgb[n][0]
-            rgb =(rgb*255).astype(np.uint8)
-            rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/rgb/rgb_%05d.png'%n,rgb)
+        if 0:  ## rgb images --------------------
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/rgb/')
 
-
-    if 1:  ## front images --------------------
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/front')
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/front_image')
+            for n in range(num_frames):
+                print(n)
+                rgb = dataset.rgb[n][0]
+                rgb =(rgb*255).astype(np.uint8)
+                rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/rgb/rgb_%05d.png'%n,rgb)
 
 
-        for n in range(num_frames):
-            print(n)
-            FeatureSize = {}
-            FeatureSize['height'] = 64
-            FeatureSize['width'] = 512
-            lidar = dataset.velo[n]
-            front, front_image = lidar_to_front(lidar,FeatureSize)
-            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/front_image/front_image_%05d.png'%n,front_image)
-            np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/front/front_%05d.npy'%n,front)
+        if 0:  ## front images --------------------
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front')
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front_image')
 
 
-    if 0:  ## top images --------------------
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/lidar')
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top')
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image')
+            for n in range(num_frames):
+                print(n)
+                FeatureSize = {}
+                FeatureSize['height'] = 64
+                FeatureSize['width'] = 512
+                lidar = dataset.velo[n]
+                front, front_image = lidar_to_front(lidar,FeatureSize)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front_image/front_image_%05d.png'%n,front_image)
+                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front/front_%05d.npy'%n,front)
 
-        for n in range(num_frames):
-            print(n)
-            lidar = dataset.velo[n]
+
+        if 1:  ## top images --------------------
+            #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar')
+            #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top')
+            #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image')
+
+            for n in range(num_frames):
+                print(n)
+                lidar = dataset.velo[n]
+                top, top_image = lidar_to_top(lidar)
+
+                #np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar/lidar_%05d.npy'%n,lidar)
+                #np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top/top_%05d.npy'%n,top)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_image_%05d.png'%n,top_image)
+
+            #exit(0)
+
+
+
+        if 0:  ## boxes3d  --------------------
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d')
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_labels')
+            for n in range(num_frames):
+                print(n)
+                objs = objects[n]
+                gt_boxes3d, gt_labels = obj_to_gt_boxes3d(objs)
+
+                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n,gt_boxes3d)
+                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_labels/gt_labels_%05d.npy'%n,gt_labels)
+
+            #exit(0)
+
+
+        ############# analysis ########################### *************************************
+        if 1: ## make mean
+            mean_image = np.zeros((400,400),dtype=np.float32)
+            num_frames=20
+            for n in range(num_frames):
+                print(n)
+                top_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_image_%05d.png'%n,0)
+                mean_image += top_image.astype(np.float32)
+
+            mean_image = mean_image/num_frames
+            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_mean_image.png',mean_image)
+
+
+        if 1: ## gt_3dboxes distribution ... location and box, height
+            depths =[]
+            aspects=[]
+            scales =[]
+            mean_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_mean_image.png',0)
+
+            for n in range(num_frames):
+                print(n)
+                gt_boxes3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n)
+
+                top_boxes = box3d_to_top_box(gt_boxes3d)
+                draw_box3d_on_top(mean_image, gt_boxes3d,color=(255,255,255), thickness=1, darken=1)
+
+
+                for i in range(len(top_boxes)):
+                    x1,y1,x2,y2 = top_boxes[i]
+                    w = math.fabs(x2-x1)
+                    h = math.fabs(y2-y1)
+                    area = w*h
+                    s = area**0.5
+                    scales.append(s)
+
+                    a = w/h
+                    aspects.append(a)
+
+                    box3d = gt_boxes3d[i]
+                    d = np.sum(box3d[0:4,2])/4 -  np.sum(box3d[4:8,2])/4
+                    depths.append(d)
+
+            depths  = np.array(depths)
+            aspects = np.array(aspects)
+            scales  = np.array(scales)
+
+            np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/depths.txt',depths)
+            np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/aspects.txt',aspects)
+            np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/scales.txt',scales)
+            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_rois.png',mean_image)
+
+
+
+
+
+
+
+
+        #----------------------------------------------------------
+        #----------------------------------------------------------
+        #exit(0)
+
+
+
+
+
+        #----------------------------------------------------------
+        lidar = dataset.velo[0]
+
+        objs = objects[0]
+        gt_labels, gt_boxes, gt_boxes3d = obj_to_gt(objs)
+
+        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
+        draw_lidar(lidar, fig=fig)
+        draw_gt_boxes3d(gt_boxes3d, fig=fig)
+        mlab.show(1)
+
+        print ('** calling lidar_to_tops() **')
+        if 1:
             top, top_image = lidar_to_top(lidar)
+            rgb = dataset.rgb[0][0]
+        else:
+            top = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top.npy')
+            top_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top_image.png')
+            rgb = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/rgb.npy')
 
-            np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/lidar/lidar_%05d.npy'%n,lidar)
-            np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top/top_%05d.npy'%n,top)
-            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image/top_image_%05d.png'%n,top_image)
+        rgb =(rgb*255).astype(np.uint8)
+        rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        # -----------
 
+
+
+        #check
+        num = len(gt_boxes)
+        for n in range(num):
+           x1,y1,x2,y2 = gt_boxes[n]
+           cv2.rectangle(top_image,(x1,y1), (x2,y2), (0,255,255), 1)
+
+
+        ## check
+        boxes3d0 = box_to_box3d(gt_boxes)
+
+        draw_gt_boxes3d(boxes3d0,  color=(1,1,0), line_width=1, fig=fig)
+        mlab.show(1)
+
+        for n in range(num):
+            qs = make_projected_box3d(gt_boxes3d[n])
+            draw_projected_box3d(rgb,qs)
+
+        #imshow('rgb',rgb)
+        #cv2.waitKey(0)
+
+
+
+
+        #save
+        #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/rgb.npy',rgb)
+        #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/lidar.npy',lidar)
+        #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/top.npy',top)
+        #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.png',top_image)
+        #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.maked.png',top_image)
+
+        np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy',gt_labels)
+        np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes.npy',gt_boxes)
+        np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy',gt_boxes3d)
+
+        #imshow('top_image',top_image)
+        #cv2.waitKey(0)
+
+        #pause
         #exit(0)
-
-
-
-    if 0:  ## boxes3d  --------------------
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_boxes3d')
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_labels')
-        for n in range(num_frames):
-            print(n)
-            objs = objects[n]
-            gt_boxes3d, gt_labels = obj_to_gt_boxes3d(objs)
-
-            np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_boxes3d/gt_boxes3d_%05d.npy'%n,gt_boxes3d)
-            np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_labels/gt_labels_%05d.npy'%n,gt_labels)
-
-        #exit(0)
-
-
-    ############# analysis ########################### *************************************
-    if 0: ## make mean
-        mean_image = np.zeros((400,400),dtype=np.float32)
-        num_frames=20
-        for n in range(num_frames):
-            print(n)
-            top_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image/top_image_%05d.png'%n,0)
-            mean_image += top_image.astype(np.float32)
-
-        mean_image = mean_image/num_frames
-        cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image/top_mean_image.png',mean_image)
-
-
-    if 0: ## gt_3dboxes distribution ... location and box, height
-        depths =[]
-        aspects=[]
-        scales =[]
-        mean_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image/top_mean_image.png',0)
-
-        for n in range(num_frames):
-            print(n)
-            gt_boxes3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/gt_boxes3d/gt_boxes3d_%05d.npy'%n)
-
-            top_boxes = box3d_to_top_box(gt_boxes3d)
-            draw_box3d_on_top(mean_image, gt_boxes3d,color=(255,255,255), thickness=1, darken=1)
-
-
-            for i in range(len(top_boxes)):
-                x1,y1,x2,y2 = top_boxes[i]
-                w = math.fabs(x2-x1)
-                h = math.fabs(y2-y1)
-                area = w*h
-                s = area**0.5
-                scales.append(s)
-
-                a = w/h
-                aspects.append(a)
-
-                box3d = gt_boxes3d[i]
-                d = np.sum(box3d[0:4,2])/4 -  np.sum(box3d[4:8,2])/4
-                depths.append(d)
-
-        depths  = np.array(depths)
-        aspects = np.array(aspects)
-        scales  = np.array(scales)
-
-        np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/depths.txt',depths)
-        np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/aspects.txt',aspects)
-        np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/scales.txt',scales)
-        cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/top_image/top_rois.png',mean_image)
-
-
-
-
-
-
-
-
-    #----------------------------------------------------------
-    #----------------------------------------------------------
-    #exit(0)
-
-
-
-
-
-    #----------------------------------------------------------
-    lidar = dataset.velo[0]
-
-    objs = objects[0]
-    gt_labels, gt_boxes, gt_boxes3d = obj_to_gt(objs)
-
-    fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
-    draw_lidar(lidar, fig=fig)
-    draw_gt_boxes3d(gt_boxes3d, fig=fig)
-    mlab.show(1)
-
-    print ('** calling lidar_to_tops() **')
-    if 0:
-        top, top_image = lidar_to_top(lidar)
-        rgb = dataset.rgb[0][0]
-    else:
-        top = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top.npy')
-        top_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top_image.png')
-        rgb = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/rgb.npy')
-
-    rgb =(rgb*255).astype(np.uint8)
-    rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-    # -----------
-
-
-
-    #check
-    num = len(gt_boxes)
-    for n in range(num):
-       x1,y1,x2,y2 = gt_boxes[n]
-       cv2.rectangle(top_image,(x1,y1), (x2,y2), (0,255,255), 1)
-
-
-    ## check
-    boxes3d0 = box_to_box3d(gt_boxes)
-
-    draw_gt_boxes3d(boxes3d0,  color=(1,1,0), line_width=1, fig=fig)
-    mlab.show(1)
-
-    for n in range(num):
-        qs = make_projected_box3d(gt_boxes3d[n])
-        draw_projected_box3d(rgb,qs)
-
-    #imshow('rgb',rgb)
-    #cv2.waitKey(0)
-
-
-
-
-    #save
-    #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/rgb.npy',rgb)
-    #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/lidar.npy',lidar)
-    #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/top.npy',top)
-    #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.png',top_image)
-    #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.maked.png',top_image)
-
-    np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy',gt_labels)
-    np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes.npy',gt_boxes)
-    np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy',gt_boxes3d)
-
-    #imshow('top_image',top_image)
-    #cv2.waitKey(0)
-
-    #pause
-    #exit(0)
 
 
 
