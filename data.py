@@ -358,9 +358,10 @@ if __name__ == '__main__':
 
     basedir = '/home/mohsen/Desktop/didi-udacity-2017-master/data'
     date  = '2011_09_26'
-    drives = ['0001', '0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+    #drives = ['0001', '0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+    #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
+    drives = ['0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
                                    '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
-
     for drive in drives:
 
         # The range argument is optional - default is None, which loads the whole dataset
@@ -380,9 +381,9 @@ if __name__ == '__main__':
         objects = read_objects(tracklet_file, num_frames)
 
         ############# convert   ###########################  ************************************
-        #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive)
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive)
 
-        if 0:  ## rgb images --------------------
+        if 1:  ## rgb images --------------------
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/rgb/')
 
             for n in range(num_frames):
@@ -393,7 +394,7 @@ if __name__ == '__main__':
                 cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/rgb/rgb_%05d.png'%n,rgb)
 
 
-        if 0:  ## front images --------------------
+        if 1:  ## front images --------------------
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front')
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front_image')
 
@@ -410,24 +411,24 @@ if __name__ == '__main__':
 
 
         if 1:  ## top images --------------------
-            #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar')
-            #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top')
-            #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image')
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar')
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top')
+            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image')
 
             for n in range(num_frames):
                 print(n)
                 lidar = dataset.velo[n]
                 top, top_image = lidar_to_top(lidar)
 
-                #np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar/lidar_%05d.npy'%n,lidar)
-                #np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top/top_%05d.npy'%n,top)
+                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar/lidar_%05d.npy'%n,lidar)
+                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top/top_%05d.npy'%n,top)
                 cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_image_%05d.png'%n,top_image)
 
             #exit(0)
 
 
 
-        if 0:  ## boxes3d  --------------------
+        if 1:  ## boxes3d  --------------------
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d')
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_labels')
             for n in range(num_frames):
