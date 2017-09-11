@@ -58,36 +58,43 @@ def box_to_box3d(boxes):
 
 def load_dummy_datas():
 
-    drives = ['0001', '0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
-                                   '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
-    num_frames = [108,77,154,447,233,144,314,114,270,22,438,294,361,373,78,383,340,433]
-    rgbs      =[None] * 4690
-    lidars    =[None] * 4690
-    tops      =[None] * 4690
-    fronts    =[None] * 4690
-    gt_labels =[None] * 4690
-    gt_boxes3d=[None] * 4690
+    #drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+    #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
+    #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294,361,373,78,383,340,433]
 
-    top_images  =[None] * 4690
-    front_images=[None] * 4690
+    drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+                                   '0048', '0051', '0056']
+    num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
+    #drives = ['0001']
+    #num_frames = [108]
+    rgbs      =[None] * sum(num_frames)
+    lidars    =[None] * sum(num_frames)
+    tops      =[None] * sum(num_frames)
+    fronts    =[None] * sum(num_frames)
+    gt_labels =[None] * sum(num_frames)
+    gt_boxes3d=[None] * sum(num_frames)
+
+    top_images  =[None] * sum(num_frames)
+    front_images=[None] * sum(num_frames)
     num_drive = -1
-    tmp = 0
+    tmp = -1
     fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
     for num_frame in num_frames:
-        temp = tmp+1;
-      for n in range(tmp+1,num_frame+tmp):
+      temp = tmp+1;
+      num_drive += 1
+      for n in range(tmp+1,num_frame+tmp+1):
         print(n)
 
-        rgb   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/rgb/rgb_%05d.png'%n-temp,1)
-        lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/lidar/lidar_%05d.npy'%n-temp)
-        top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top/top_%05d.npy'%n-temp)
-        front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front/front_%05d.npy'%n-temp)
-        gt_label  = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%n-temp)
-        gt_box3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n-temp)
+        rgb   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
+        lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
+        top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
+        front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
+        gt_label  = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
+        gt_box3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
 
 
-        top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top_image/top_image_%05d.png'%n-temp,1)
-        front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front_image/front_image_%05d.png'%n-temp,1)
+        top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
+        front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
 
         #rgbs.append(rgb)
         #lidars.append(lidar)
@@ -280,13 +287,16 @@ def run_train():
         batch_top_reg_loss =0
         batch_fuse_cls_loss=0
         batch_fuse_reg_loss=0
-        for iter in range(max_iter):
+        iter = 0
+        while iter<max_iter :
+        #for iter in range(max_iter):
             epoch=1.0*iter
             rate=0.05
 
 
             ## generate train image -------------
             idx = np.random.choice(num_frames)     #*10   #num_frames)  #0
+            #print (idx)
             batch_top_images    = tops[idx].reshape(1,*top_shape)
             batch_front_images  = fronts[idx].reshape(1,*front_shape)
             batch_rgb_images    = rgbs[idx].reshape(1,*rgb_shape)
@@ -294,6 +304,9 @@ def run_train():
             batch_gt_labels    = gt_labels[idx]
             batch_gt_boxes3d   = gt_boxes3d[idx]
             batch_gt_top_boxes = box3d_to_top_box(batch_gt_boxes3d)
+
+            if len(batch_gt_labels) ==0:
+                continue
 
 
 			## run propsal generation ------------
@@ -308,6 +321,10 @@ def run_train():
             batch_proposals, batch_proposal_scores, batch_top_features = sess.run([proposals, proposal_scores, top_features],fd1)
 
             ## generate  train rois  ------------
+            #print (anchors)
+            #print (inside_inds)
+            #print (batch_gt_labels)
+            #print (batch_gt_top_boxes)
             batch_top_inds, batch_top_pos_inds, batch_top_labels, batch_top_targets  = \
                 rpn_target ( anchors, inside_inds, batch_gt_labels,  batch_gt_top_boxes)
 
@@ -418,6 +435,7 @@ def run_train():
                 #saver.save(sess, out_dir + '/check_points/%06d.ckpt'%iter)  #iter
                 saver.save(sess, out_dir + '/check_points/snap.ckpt')  #iter
 
+            iter = iter + 1
 
 
 
