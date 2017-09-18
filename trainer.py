@@ -330,11 +330,21 @@ def run_train():
         batch_fuse_reg_loss=0
         iter = 0
         num_save = 0
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_gt')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_label')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_target')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_label')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_target')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_rgb_rois')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_rpn')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_rpn_nms')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_rcnn')
+        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_rcnn_nms')
 
         while iter<max_iter :
         #for iter in range(max_iter):
             epoch=1.0*iter
-            rate=0.05
+            rate=0.005
 
 
             ## generate train image -------------
@@ -380,25 +390,31 @@ def run_train():
 
 
             ##debug gt generation
-            if 0 and iter%iter_debug==1:
+            if 1 and iter%iter_debug==0:
                 top_image = top_imgs[idx]
                 rgb       = rgbs[idx]
 
                 img_gt     = draw_rpn_gt(top_image, batch_gt_top_boxes, batch_gt_labels)
                 img_label  = draw_rpn_labels (top_image, anchors, batch_top_inds, batch_top_labels )
                 img_target = draw_rpn_targets(top_image, anchors, batch_top_pos_inds, batch_top_targets)
-                misc.imshow(img_gt)
-                misc.imshow(img_label)
-                misc.imshow(img_target)
+
+
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_gt/img_gt%05d.png'%num_save, img_gt)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_label/img_label%05d.png'%num_save, img_label)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_target/img_target%05d.png'%num_save, img_target)
+
+
+
 
                 img_label  = draw_rcnn_labels (top_image, batch_top_rois, batch_fuse_labels )
                 img_target = draw_rcnn_targets(top_image, batch_top_rois, batch_fuse_labels, batch_fuse_targets)
-                misc.imshow(img_label)
-                misc.imshow(img_target)
+
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_label/img_label%05d.png'%num_save, img_label)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_target/img_target%05d.png'%num_save, img_target)
 
 
                 img_rgb_rois = draw_boxes(rgb, batch_rgb_rois[:,1:5], color=(255,0,255), thickness=1)
-                misc.imshow(img_rgb_rois)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_rgb_rois/img_rgb_rois%05d.png'%num_save, img_rgb_rois)
 
                 #cv2.waitKey(1)
 
@@ -460,35 +476,18 @@ def run_train():
                 plt.pause(0.01)
 
 				## show rpn(top) nms
+
                 img_rpn     = draw_rpn    (top_image, batch_top_probs, batch_top_deltas, anchors, inside_inds)
                 img_rpn_nms = draw_rpn_nms(top_image, batch_proposals, batch_proposal_scores)
-                pause_sec = 0.5
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rpn%05d.png'%num_save, img_rpn)
-                plt.imshow(img_rpn)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rpn_nms%05d.png'%num_save, img_rpn_nms)
-                plt.imshow(img_rpn_nms)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                #cv2.waitKey(1)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_rpn/img_rpn%05d.png'%num_save, img_rpn)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rpn/img_rpn_nms/img_rpn_nms%05d.png'%num_save, img_rpn_nms)
 
                 ## show rcnn(fuse) nms
                 img_rcnn     = draw_rcnn (top_image, batch_fuse_probs, batch_fuse_deltas, batch_top_rois, batch_rois3d,darker=1)
                 img_rcnn_nms = draw_rcnn_nms(rgb, boxes3d, probs)
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rcnn%05d.png'%num_save, img_rcnn)
-                plt.imshow(img_rcnn)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
-                #misc.imshow(img_rcnn_nms)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                #cv2.waitKey(1)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_rcnn/img_rcnn%05d.png'%num_save, img_rcnn)
+                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/rcnn/img_rcnn_nms/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
+                print ('salam')
                 num_save += 1
             # save: ------------------------------------
             if iter%500==0:
