@@ -62,9 +62,9 @@ def load_dummy_datas():
     #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
     #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294,361,373,78,383,340,433]
     datadir = '/home/dongwoo/Project/MV3D/data/raw/'
-    drives =  ['0001', '0002', '0011', '0013', '0017', '0018',
-                                   '0048', '0051', '0056']#, '0057', '0060', '0084', '0091']
-    num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
+    drives =  ['0001', '0002']#, '0011', '0013', '0017', '0018',
+                                 #  '0048', '0051', '0056']#, '0057', '0060', '0084', '0091']
+    num_frames = [108,77]#,154,443,233,144,314,114,270,22,438,294]
     #drives = ['0001']
     #num_frames = [108]
     rgbs      =[None] * sum(num_frames)
@@ -78,7 +78,7 @@ def load_dummy_datas():
     front_images=[None] * sum(num_frames)
     num_drive = -1
     tmp = -1
-    fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
+    #fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
     for num_frame in num_frames:
       temp = tmp+1;
       num_drive += 1
@@ -136,7 +136,7 @@ def load_dummy_datas():
 
 
     ##exit(0)
-    mlab.close(all=True)
+    #mlab.close(all=True)
     return  rgbs, tops, fronts, gt_labels, gt_boxes3d, top_images, front_images, lidars
 
 
