@@ -220,47 +220,42 @@ def lidar_to_top(lidar):
     pzs=lidar[:,2]
     prs=lidar[:,3]
 
+    # Discretize feature Map
     qxs=((pxs-TOP_X_MIN)//TOP_X_DIVISION).astype(np.int32)
     qys=((pys-TOP_Y_MIN)//TOP_Y_DIVISION).astype(np.int32)
     qzs=((pzs-TOP_Z_MIN)//TOP_Z_DIVISION).astype(np.int32)
+    Pointcloud = np.hstack((qxs, qys, pzs, prs))
 
+    # sort increasing order from z->y->x, use stable(lex) sort
+    indices = np.lexsort((-PointCloud[:,2],PointCloud[:,1],PointCloud[:,0]))
+    PointCloud = PointCloud[indices, :]
+    qzs = qzs[indices]
+
+    # Initialize zeros to top feature map
     print('height,width,channel=%d,%d,%d'%(height,width,channel))
     top = np.zeros(shape=(height,width,channel), dtype=np.float32)
 
-    ## start to make top  here !!!
-    for z in range(Z0,Zn):
-        iz = np.where (qzs==z)
-        for y in range(Y0,Yn):
-            iy  = np.where (qys==y)
-            iyz = np.intersect1d(iy, iz)
+    # Height Map
+    heightMap = np.zeros((height,width,channel - 2)) # 2 for density & Intensity
+    for i in range(Z0, Zn):
+        mask_height = np.where((qzs[:] == i))
+        PointCloud_height = PointCloud[mask_height]
+        
+        # Remove the point with same (x,y,z) value, remaining the maximum value
+        if PointCloud_height.shape[0] !=0:
+            _, indices = np.unique(PointCloud_height[:,0:2], axis=0, return_index=True)
+            PointCloud_height = PointCloud_height[indices]
+            # Feed in the maximum height(before discretize) of each voxel
+            top[np.int(PointCloud_height[:,0]), PointCloud_height[:,1]), i] = PointCloud_height[:,2]
+    # Intensity Map & Density Map
+    # Remains (x, y, max_z)
+    _, indices, counts = np.unique(PointCloud[:,0:2], axis=0, return_index=True,return_counts = True)
+    PointCloud_top = PointCloud[indices]
 
-            for x in range(X0,Xn):
-                #print('', end='\r',flush=True)
-                #print(z,y,z,flush=True)
+    normalizedCounts = np.minimum(1.0, np.log(counts + 1)/np.log(64))
 
-                ix = np.where (qxs==x)
-                idx = np.intersect1d(ix,iyz)
-
-                if len(idx)>0:
-                    yy,xx,zz = -(x-X0),-(y-Y0),z-Z0
-
-
-                    #height per slice
-                    max_height = max(0,np.max(pzs[idx])-TOP_Z_MIN)
-                    top[yy,xx,zz]=max_height
-
-                    #intensity
-                    max_intensity = np.max(prs[idx])
-                    top[yy,xx,Zn]=max_intensity
-
-                    #density
-                    count = len(idx)
-                    top[yy,xx,Zn+1]+=count
-
-                pass
-            pass
-        pass
-    top[:,:,Zn+1] = np.log(top[:,:,Zn+1]+1)/math.log(64)
+    top[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1]), channel - 2] = PointCloud_top[:,3]
+    top[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1]), channel - 1] = normalizedCounts
 
     if 1:
         top_image = np.sum(top,axis=2)
@@ -283,8 +278,7 @@ def lidar_to_top(lidar):
         top_image=top_image.astype(dtype=np.uint8)
 
 
-    return top, top_image
-
+    return top, top_image    
 
 ## drawing ####
 
@@ -414,6 +408,9 @@ if __name__ == '__main__':
     ############# convert   ###########################  ************************************
     #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive)
 
+    #remove unseen velo points at image view 
+    for n in range(num_frames):
+        dataset_velo[n] = removePoints(dataset_velo[n])s
 
 
     if 1:  ## rgb images --------------------

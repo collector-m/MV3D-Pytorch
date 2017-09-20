@@ -79,7 +79,7 @@ def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
         PointCloud_frac = PointCloud[mask_frac]
         
         if PointCloud_frac.shape[0] != 0 :
-            _, indices = np.unique(PointCloud_frac[:,0:2], axis = 0, return_index=True)
+            _, indices = np.unique(PointCloud_frac[:,0:2], axis=0, return_index=True)
             PointCloud_frac = PointCloud_frac[indices]
             #some important problem is image coordinate is (y,x), not (x,y)
             heightMap[np.int_(PointCloud_frac[:,0]), np.int_(PointCloud_frac[:,1]), i] = PointCloud_frac[:,2]
