@@ -12,9 +12,9 @@ from kitti_data.draw import *
 from kitti_data.io import *
 import time
 from net.utility.draw import *
-from mayavi import mlab
-mlab.init_notebook()
-mlab.test_contour3d()
+#from mayavi import mlab
+#mlab.init_notebook()
+#mlab.test_contour3d()
 
 
 # run functions --------------------------------------------------------------------------
@@ -125,8 +125,41 @@ def obj_to_gt_boxes3d(objs):
 
     return  gt_boxes3d, gt_labels
 
+def removePoints(PointCloud):
+    # Transform matrix from Calibration
+    #Tr_p2 = Calib['P_left']; Tr_rect = Calib['rect']; Tr_velo2cam = Calib['velo2cam']
+
+    # Boundary condition
+    minX = TOP_X_MIN ; maxX = TOP_X_MAX
+    minY = TOP_Y_MIN ; maxY = TOP_Y_MAX
+    minZ = TOP_Z_MIN ; maxZ = TOP_Z_MAX
+    #imgH = BoundaryCond['imgH'] ; imgW = BoundaryCond['imgW'] 
+    
+    # Remove the point out of range x,y
+    #minX = 0;maxX = 70.4;    minY = -40; maxY = 40;
+    #imgH = 370; imgW = 1224
+    mask = np.where((PointCloud[:, 0] >= minX) & (PointCloud[:, 0]<=maxX) & (PointCloud[:, 1] >= minY) & (PointCloud[:, 1]<=maxY) & (PointCloud[:, 2] >= minZ) & (PointCloud[:, 2]<=maxZ))
+    PointCloud = PointCloud[mask]
+    """
+    # Remove the point out of image size
+    PointCloud_proj = np.copy(PointCloud)
+    PointCloud_proj[:,3] = 1
+    PointCloud_proj = np.dot(Tr_velo2cam, PointCloud_proj.T)
+    PointCloud_proj = np.dot(Tr_rect, PointCloud_proj)
+    PointCloud_proj = np.dot(Tr_p2, PointCloud_proj).T
+
+    PointCloud_z = PointCloud_proj[:,2]
+    PointCloud_proj = PointCloud_proj / PointCloud_z[:,None]
+
+    mask = np.where((PointCloud_proj[:,0] >= 1) & (PointCloud_proj[:,0] <= imgW) & (PointCloud_proj[:,1] >=1) & (PointCloud_proj[:,1] <= imgH))    
+    PointCloud_proj = PointCloud_proj[mask]
+    PointCloud = PointCloud[mask]
+    """
+    return PointCloud
 
 def lidar_to_front(PointCloud, FeatureSize):
+    PointCloud = removePoints(PointCloud)
+
     height = FeatureSize['height']
     width = FeatureSize['width']
 
@@ -147,8 +180,8 @@ def lidar_to_front(PointCloud, FeatureSize):
     minR = np.amin(r);
     maxR = np.amax(r)
 
-    c = np.around((c - minC) * (width - 1) / (maxC - minC))
-    r = np.around((r - minR) * (height - 1) / (maxR - minR))
+    c = (width - 1) - np.around((c - minC) * (width - 1) / (maxC - minC))
+    r = (height - 1) - np.around((r - minR) * (height - 1) / (maxR - minR))
 
     coordinate = np.int_(np.zeros((nPoint, 2)))
     featureValue = np.zeros((nPoint, 3))
@@ -164,7 +197,6 @@ def lidar_to_front(PointCloud, FeatureSize):
     output = np.zeros((height, width, 3))
 
     output[coordinate[:, 0], coordinate[:, 1], :] = featureValue[:, 0:3]
-
 
     front_image = np.sum(output,axis=2)
     front_image = front_image-np.min(front_image)
@@ -356,47 +388,48 @@ def draw_gt_boxes3d(gt_boxes3d, fig, color=(1,1,1), line_width=2):
 if __name__ == '__main__':
     print( '%s: calling main function ... ' % os.path.basename(__file__))
 
-    basedir = '/home/mohsen/Desktop/didi-udacity-2017-master/data'
+    basedir = '/home/dongwoo/Project/dataset/KITTI/Raw'
+    outdir = '/home/dongwoo/Project/MV3D/data/raw/'
     date  = '2011_09_26'
-    #drives = ['0001', '0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
-    #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
-    drives = ['0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
-                                   '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
+    drives = ['0001','0002', '0011', '0013', '0017', '0018',
+                                   '0048', '0051', '0056', '0057', '0060', '0084', '0091'] # 0009, 0005
+    #drives = ['0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+     #                              '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
     for drive in drives:
 
         # The range argument is optional - default is None, which loads the whole dataset
         dataset = pykitti.raw(basedir, date, drive) #, range(0, 50, 5))
 
         # Load some data
-        dataset.load_calib()         # Calibration data are accessible as named tuples
-        dataset.load_timestamps()    # Timestamps are parsed into datetime objects
-        dataset.load_oxts()          # OXTS packets are loaded as named tuples
-        dataset.load_gray()         # Left/right images are accessible as named tuples
+        #dataset.load_calib()         # Calibration data are accessible as named tuples
+        #dataset.load_timestamps()    # Timestamps are parsed into datetime objects
+        #dataset.load_oxts()          # OXTS packets are loaded as named tuples
+        #dataset.load_gray()         # Left/right images are accessible as named tuples
         dataset.load_rgb()          # Left/right images are accessible as named tuples
         dataset.load_velo()          # Each scan is a Nx4 array of [x,y,z,reflectance]
 
-        tracklet_file = '/home/mohsen/Desktop/didi-udacity-2017-master/data/2011_09_26/2011_09_26_drive_'+drive+'_sync/tracklet_labels.xml'
+        tracklet_file = basedir+'/2011_09_26/2011_09_26_drive_'+drive+'_sync/tracklet_labels.xml'
 
         num_frames=len(dataset.velo)  #154
         objects = read_objects(tracklet_file, num_frames)
 
         ############# convert   ###########################  ************************************
-        os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive)
+        os.makedirs( outdir   +drive)
 
         if 1:  ## rgb images --------------------
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/rgb/')
+            os.makedirs(outdir+drive+'/rgb/')
 
             for n in range(num_frames):
                 print(n)
                 rgb = dataset.rgb[n][0]
                 rgb =(rgb*255).astype(np.uint8)
                 rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/rgb/rgb_%05d.png'%n,rgb)
+                cv2.imwrite(outdir+drive+'/rgb/rgb_%05d.png'%n,rgb)
 
 
         if 1:  ## front images --------------------
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front')
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front_image')
+            os.makedirs(outdir+drive+'/front')
+            os.makedirs(outdir+drive+'/front_image')
 
 
             for n in range(num_frames):
@@ -406,10 +439,10 @@ if __name__ == '__main__':
                 FeatureSize['width'] = 512
                 lidar = dataset.velo[n]
                 front, front_image = lidar_to_front(lidar,FeatureSize)
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front_image/front_image_%05d.png'%n,front_image)
-                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/front/front_%05d.npy'%n,front)
+                cv2.imwrite(outdir+drive+'/front_image/front_image_%05d.png'%n,front_image)
+                np.save(outdir+drive+'/front/front_%05d.npy'%n,front)
 
-
+        """
         if 1:  ## top images --------------------
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar')
             os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top')
@@ -573,6 +606,7 @@ if __name__ == '__main__':
 
         #pause
         #exit(0)
+        """
 
 
 

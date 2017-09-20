@@ -126,11 +126,29 @@ def obj_to_gt_boxes3d(objs):
 
     return  gt_boxes3d, gt_labels
 
+def removePoints(PointCloud):
+    # Transform matrix from Calibration
+    #Tr_p2 = Calib['P_left']; Tr_rect = Calib['rect']; Tr_velo2cam = Calib['velo2cam']
+
+    # Boundary condition
+    minX = TOP_X_MIN ; maxX = TOP_X_MAX
+    minY = TOP_Y_MIN ; maxY = TOP_Y_MAX
+    minZ = TOP_Z_MIN ; maxZ = TOP_Z_MAX
+    #imgH = BoundaryCond['imgH'] ; imgW = BoundaryCond['imgW'] 
+    
+    # Remove the point out of range x,y
+    #minX = 0;maxX = 70.4;    minY = -40; maxY = 40;
+    #imgH = 370; imgW = 1224
+    mask = np.where((PointCloud[:, 0] >= minX) & (PointCloud[:, 0]<=maxX) & (PointCloud[:, 1] >= minY) & (PointCloud[:, 1]<=maxY) & (PointCloud[:, 2] >= minZ) & (PointCloud[:, 2]<=maxZ))
+    PointCloud = PointCloud[mask]
+
+    return PointCloud
 
 def lidar_to_front(PointCloud, FeatureSize):
+    PointCloud = removePoints(PointCloud)
+
     height = FeatureSize['height']
     width = FeatureSize['width']
-
 
     nPoint = PointCloud.shape[0]
     x = PointCloud[:, 0]
@@ -142,14 +160,25 @@ def lidar_to_front(PointCloud, FeatureSize):
     r = np.arctan2(z, np.linalg.norm(xy, axis=1))
 
     # Normalizing the coordinate of c and r
+    
     # Some issuses occurs when doing ROI pooling
     minC = np.amin(c);
     maxC = np.amax(c)
     minR = np.amin(r);
     maxR = np.amax(r)
+    """
+    minX = TOP_X_MIN ; maxX = TOP_X_MAX
+    minY = TOP_Y_MIN ; maxY = TOP_Y_MAX
+    minZ = TOP_Z_MIN ; maxZ = TOP_Z_MAX   
 
-    c = np.around((c - minC) * (width - 1) / (maxC - minC))
-    r = np.around((r - minR) * (height - 1) / (maxR - minR))
+    minC = np.arctan2(maxY, minX)
+    maxC = np.arctan2()
+    minR = np.arctan2(,)
+    maxR = np.arctan2(,)
+    """
+    
+    c = (width - 1) - np.around((c - minC) * (width - 1) / (maxC - minC))
+    r = (height - 1) - np.around((r - minR) * (height - 1) / (maxR - minR))
 
     coordinate = np.int_(np.zeros((nPoint, 2)))
     featureValue = np.zeros((nPoint, 3))
@@ -166,12 +195,10 @@ def lidar_to_front(PointCloud, FeatureSize):
 
     output[coordinate[:, 0], coordinate[:, 1], :] = featureValue[:, 0:3]
 
-
     front_image = np.sum(output,axis=2)
     front_image = front_image-np.min(front_image)
     front_image = (front_image/np.max(front_image)*255)
     front_image = np.dstack((front_image, front_image, front_image)).astype(np.uint8)
-
 
     return output, front_image
 
@@ -358,7 +385,7 @@ if __name__ == '__main__':
     print( '%s: calling main function ... ' % os.path.basename(__file__))
     
     basedir = '/home/dongwoo/Project/dataset/KITTI/Object/training'
-    outdir = '/home/dongwoo/Project/MV3D/MV3D-mohsen/data'
+    outdir = '/home/dongwoo/Project/MV3D/data/object'
 
     """
     date  = '2011_09_26'
@@ -408,6 +435,8 @@ if __name__ == '__main__':
         for n in range(num_frames):
             print(n)
             FeatureSize = {}
+            imageSize['hieght']
+            imageWidth['']
             FeatureSize['height'] = 64
             FeatureSize['width'] = 512
             lidar = dataset_velo[n]
@@ -417,17 +446,17 @@ if __name__ == '__main__':
 
 
     if 1:  ## top images --------------------
-        #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar')
-        #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top')
-        #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image')
+        os.makedirs(outdir+'/lidar')
+        os.makedirs(outdir+'/top')
+        os.makedirs(outdir+'/top_image')
 
         for n in range(num_frames):
             print(n)
             lidar = dataset_velo[n]
             top, top_image = lidar_to_top(lidar)
 
-            #np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar/lidar_%05d.npy'%n,lidar)
-            #np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top/top_%05d.npy'%n,top)
+            np.save(outdir+'/lidar/lidar_%05d.npy'%n,lidar)
+            np.save(outdir+'/top/top_%05d.npy'%n,top)
             cv2.imwrite(outdir+'/top_image/top_image_%05d.png'%n,top_image)
 
         #exit(0)
@@ -499,20 +528,9 @@ if __name__ == '__main__':
         np.savetxt(outdir+'/scales.txt',scales)
         cv2.imwrite(outdir+'/top_image/top_rois.png',mean_image)
 
-
-
-
-
-
-
-
     #----------------------------------------------------------
     #----------------------------------------------------------
     #exit(0)
-
-
-
-
 
     #----------------------------------------------------------
     lidar = dataset_velo[0]
@@ -524,7 +542,7 @@ if __name__ == '__main__':
 #    draw_lidar(lidar, fig=fig)
     #draw_gt_boxes3d(gt_boxes3d, fig=fig)
     #mlab.show(1)
-
+    """
     print ('** calling lidar_to_tops() **')
     if 1:
         top, top_image = lidar_to_top(lidar)
@@ -537,7 +555,7 @@ if __name__ == '__main__':
     #rgb =(rgb*255).astype(np.uint8)
     rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     # -----------
-
+    """
 
 
     #check
@@ -582,5 +600,3 @@ if __name__ == '__main__':
 
 
  
-
-

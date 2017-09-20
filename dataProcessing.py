@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import time
+from scipy import misc
+
 
 def getCalibMatrix(dataPath, frameNum):
     # load calibration data
@@ -79,14 +81,14 @@ def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
         if PointCloud_frac.shape[0] != 0 :
             _, indices = np.unique(PointCloud_frac[:,0:2], axis = 0, return_index=True)
             PointCloud_frac = PointCloud_frac[indices]
-            
+            #some important problem is image coordinate is (y,x), not (x,y)
             heightMap[np.int_(PointCloud_frac[:,0]), np.int_(PointCloud_frac[:,1]), i] = PointCloud_frac[:,2]
-        
+        """
         plt.imshow(heightMap[:,:,i])
         plt.show(block=False)
         plt.pause(2)
         plt.close()
-        
+        """
     # Intensity Map & DensityMap
     intensityMap = np.zeros((Height,Width))
     densityMap = np.zeros((Height,Width))
@@ -98,25 +100,26 @@ def makeBVFeature(PointCloud_, BoundaryCond, Discretization):
     
     intensityMap[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1])] = PointCloud_top[:,3]
     densityMap[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1])] = normalizedCounts
-    
+    """
     plt.imshow(densityMap[:,:])
     plt.show()
     plt.show(block=False)
     plt.pause(2)
     plt.close()
-    """
     plt.imshow(intensityMap[:,:])
     plt.show(block=False)
     plt.pause(2)
     plt.close()
-    """
+    
     output = np.zeros((Height,Width,M+2))
     output[:,:,0:M] = heightMap
     output[:,:,M] = densityMap
     output[:,:,M+1] = intensityMap
+    """
+    misc.imsave('test_bv.png',intensityMap)
     return output
     
-def makeFVFeature(PointCloud, FeatureSize):
+def makeFVFeature(PointCloud, FeatureSize, BoundaryCond):
     height = FeatureSize['height']
     width = FeatureSize['width']
 
@@ -134,8 +137,8 @@ def makeFVFeature(PointCloud, FeatureSize):
     minC = np.amin(c); maxC = np.amax(c) 
     minR = np.amin(r); maxR = np.amax(r)
 
-    c = np.around((c - minC) * (width - 1) / (maxC - minC)) 
-    r = np.around((r - minR) * (height - 1) / (maxR - minR)) 
+    c = (width - 1) - np.around((c - minC) * (width - 1) / (maxC - minC)) 
+    r = (height - 1) -  np.around((r - minR) * (height - 1) / (maxR - minR)) 
     
     coordinate = np.int_(np.zeros((nPoint,2)))
     featureValue = np.zeros((nPoint,3))
@@ -151,6 +154,32 @@ def makeFVFeature(PointCloud, FeatureSize):
     output = np.zeros((height,width,3))
 
     output[coordinate[:,0],coordinate[:,1],:] = featureValue[:,0:3]
+
+    front_image = np.sum(output,axis=2)
+    front_image = front_image-np.min(front_image)
+    front_image = (front_image/np.max(front_image)*255)
+    front_image = np.dstack((front_image, front_image, front_image)).astype(np.uint8)
+
+  #  misc.imsave('test.png',output[:,:,0])
+    """
+    plt.imshow(output[:,:,0])
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    plt.imshow(output[:,:,1])
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    plt.imshow(output[:,:,2])
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    plt.imshow(front_image[:,:,:])
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    """
+    misc.imsave('test_fv.png',front_image[:,:,:])
     return output
 
 #    return
@@ -165,13 +194,14 @@ FeatureSize = {}
 FeatureSize['height'] = 64
 FeatureSize['width'] = 512
 # load point cloud data
-a = np.fromfile('./000050.bin', dtype=np.float32).reshape(-1, 4)
+a = np.fromfile('./000039.bin', dtype=np.float32).reshape(-1, 4)
 
 c = getCalibMatrix(PATH_TO_KITTI, 50)
 
 b = removePoints(a,c,bc)
 
-d = makeFVFeature(b, FeatureSize)
+d = makeFVFeature(b, FeatureSize, bc)
+
 t = time.time()
 e = makeBVFeature(b, bc ,0.1)
 elapsed = time.time() - t

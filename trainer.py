@@ -61,9 +61,9 @@ def load_dummy_datas():
     #drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
     #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
     #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294,361,373,78,383,340,433]
-
-    drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
-                                   '0048', '0051', '0056']
+    datadir = '/home/dongwoo/Project/MV3D/data/raw/'
+    drives =  ['0001', '0002', '0011', '0013', '0017', '0018',
+                                   '0048', '0051', '0056']#, '0057', '0060', '0084', '0091']
     num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
     #drives = ['0001']
     #num_frames = [108]
@@ -85,16 +85,16 @@ def load_dummy_datas():
       for n in range(tmp+1,num_frame+tmp+1):
         print(n)
 
-        rgb   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
-        lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
-        top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
-        front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
-        gt_label  = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
-        gt_box3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
+        rgb   = cv2.imread(datadir+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
+        lidar = np.load(datadir+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
+        top   = np.load(datadir+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
+        front = np.load(datadir+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
+        gt_label  = np.load(datadir+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
+        gt_box3d = np.load(datadir+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
 
 
-        top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
-        front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
+        top_image   = cv2.imread(datadir+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
+        front_image = cv2.imread(datadir+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
 
         #rgbs.append(rgb)
         #lidars.append(lidar)
@@ -174,7 +174,7 @@ def  project_to_front_roi(rois3d):
 def run_train():
 
     # output dir, etc
-    out_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/out'
+    out_dir = '/home/dongwoo/Project/MV3D/data/out'
     makedirs(out_dir +'/tf')
     makedirs(out_dir +'/check_points')
     log = Logger(out_dir+'/log.txt',mode='a')

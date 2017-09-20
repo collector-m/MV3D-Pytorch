@@ -15,7 +15,7 @@ def load_rgb(data_path):
     
     #tic = time.time()
     for iter_files in im_files:            
-        #if len(im_all)<100 :
+        if len(im_all)<100 :
             im = np.uint8(mpimg.imread(iter_files) * 255)
             im_all.append(im) 
     
@@ -28,7 +28,7 @@ def load_velo(data_path):
     velo_all = []
 
     for iter_files in velo_files:
-        #if len(velo_all)<100 :
+        if len(velo_all)<100 :
             velo = np.fromfile(iter_files, dtype=np.float32)
             velo_all.append(velo.reshape((-1,4)))
 
@@ -41,7 +41,7 @@ def load_label(data_path):
     label_all = []
 
     for iter_files in label_files:
-        #if len(label_all)<100 :
+        if len(label_all)<100 :
             objects = []
             with open(iter_files, 'r') as file:
                 for line in file:
