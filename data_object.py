@@ -203,8 +203,6 @@ def lidar_to_front(PointCloud, FeatureSize):
     return output, front_image
 
 
-
-
 ## lidar to top ##
 def lidar_to_top(lidar):
 
@@ -224,7 +222,7 @@ def lidar_to_top(lidar):
     qxs=((pxs-TOP_X_MIN)//TOP_X_DIVISION).astype(np.int32)
     qys=((pys-TOP_Y_MIN)//TOP_Y_DIVISION).astype(np.int32)
     qzs=((pzs-TOP_Z_MIN)//TOP_Z_DIVISION).astype(np.int32)
-    Pointcloud = np.hstack((qxs, qys, pzs, prs))
+    PointCloud = np.vstack((qxs, qys, pzs, prs)).T
 
     # sort increasing order from z->y->x, use stable(lex) sort
     indices = np.lexsort((-PointCloud[:,2],PointCloud[:,1],PointCloud[:,0]))
@@ -246,7 +244,7 @@ def lidar_to_top(lidar):
             _, indices = np.unique(PointCloud_height[:,0:2], axis=0, return_index=True)
             PointCloud_height = PointCloud_height[indices]
             # Feed in the maximum height(before discretize) of each voxel
-            top[np.int(PointCloud_height[:,0]), PointCloud_height[:,1]), i] = PointCloud_height[:,2]
+            top[np.int_(PointCloud_height[:,0]), np.int_(PointCloud_height[:,1]), i] = PointCloud_height[:,2]
     # Intensity Map & Density Map
     # Remains (x, y, max_z)
     _, indices, counts = np.unique(PointCloud[:,0:2], axis=0, return_index=True,return_counts = True)
@@ -258,13 +256,13 @@ def lidar_to_top(lidar):
     top[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1]), channel - 1] = normalizedCounts
 
     if 1:
-        top_image = np.sum(top,axis=2)
+        top_image = top[:,:,channel-1]#np.sum(top,axis=2)
         top_image = top_image-np.min(top_image)
         top_image = (top_image/np.max(top_image)*255)
         top_image = np.dstack((top_image, top_image, top_image)).astype(np.uint8)
 
 
-    if 1: #unprocess
+    if 0: #unprocess
         top_image = np.zeros((height,width,3),dtype=np.float32)
 
         num = len(lidar)
@@ -410,11 +408,12 @@ if __name__ == '__main__':
 
     #remove unseen velo points at image view 
     for n in range(num_frames):
-        dataset_velo[n] = removePoints(dataset_velo[n])s
+        dataset_velo[n] = removePoints(dataset_velo[n])
 
 
     if 1:  ## rgb images --------------------
-        os.makedirs(outdir+'/rgb/')
+        if not os.path.exists(outdir+'/rgb/'):
+            os.makedirs(outdir+'/rgb/')
 
         for n in range(num_frames):
             print(n)
@@ -425,15 +424,14 @@ if __name__ == '__main__':
 
 
     if 1:  ## front images --------------------
-        os.makedirs(outdir+'/front')
-        os.makedirs(outdir+'/front_image')
+        if not os.path.exists(outdir+'/front/'):
+            os.makedirs(outdir+'/front')
+            os.makedirs(outdir+'/front_image')
 
 
         for n in range(num_frames):
             print(n)
             FeatureSize = {}
-            imageSize['hieght']
-            imageWidth['']
             FeatureSize['height'] = 64
             FeatureSize['width'] = 512
             lidar = dataset_velo[n]
@@ -443,9 +441,10 @@ if __name__ == '__main__':
 
 
     if 1:  ## top images --------------------
-        os.makedirs(outdir+'/lidar')
-        os.makedirs(outdir+'/top')
-        os.makedirs(outdir+'/top_image')
+        if not os.path.exists(outdir+'/lidar/'):
+            os.makedirs(outdir+'/lidar')
+            os.makedirs(outdir+'/top')
+            os.makedirs(outdir+'/top_image')
 
         for n in range(num_frames):
             print(n)
@@ -461,8 +460,9 @@ if __name__ == '__main__':
 
 
     if 1:  ## boxes3d  --------------------
-        os.makedirs(outdir+'/gt_boxes3d')
-        os.makedirs(outdir+'/gt_labels')
+        if not os.path.exists(outdir+'/gt_boxes3d/'):
+            os.makedirs(outdir+'/gt_boxes3d')
+            os.makedirs(outdir+'/gt_labels')
         for n in range(num_frames):
             print(n)
             objs = objects[n]
@@ -565,7 +565,7 @@ if __name__ == '__main__':
     ## check
     boxes3d0 = box_to_box3d(gt_boxes)
 
-    draw_gt_boxes3d(boxes3d0,  color=(1,1,0), line_width=1, fig=fig)
+    #draw_gt_boxes3d(boxes3d0,  color=(1,1,0), line_width=1, fig=fig)
     #mlab.show(1)
 
     for n in range(num):
