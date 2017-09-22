@@ -60,23 +60,7 @@ def draw_rpn(image, probs, deltas, anchors, inside_inds, threshold=0.75, darker=
 
 
 
-def load_dummy_data():
-    rgb   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/rgb.npy')
-    lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/lidar.npy')
-    top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top.npy')
-    front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/front.npy')
-    gt_labels    = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy')
-    gt_boxes3d   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy')
-    gt_top_boxes = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_top_boxes.npy')
 
-    top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top_image.png')
-    front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/front_image.png')
-
-    rgb =(rgb*255).astype(np.uint8)
-    rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-    gt_boxes3d = gt_boxes3d.reshape(-1,8,3)
-
-    return  rgb, top, front, gt_labels, gt_boxes3d, top_image, front_image, lidar
 
 def box_to_box3d(boxes):
 
@@ -101,13 +85,13 @@ def load_dummy_datas():
     #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
     #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294,361,373,78,383,340,433]
 
-    drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
-                                  '0048', '0051', '0056']
-    num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
+    #drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+    #                              '0048', '0051', '0056']
+    #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
 
 
-    #drives = ['0001']
-    #num_frames = [108]
+    drives = [ '0048']
+    num_frames = [22]
     rgbs      =[None] * sum(num_frames)
     lidars    =[None] * sum(num_frames)
     tops      =[None] * sum(num_frames)
@@ -125,17 +109,18 @@ def load_dummy_datas():
       num_drive += 1
       for n in range(tmp+1,num_frame+tmp+1):
         print(n)
+        data_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'
 
-        rgb   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
-        lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
-        top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
-        front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
-        gt_label  = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
-        gt_box3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
+        rgb   = cv2.imread(data_dir+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
+        lidar = np.load(data_dir+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
+        top   = np.load(data_dir+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
+        front = np.load(data_dir+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
+        gt_label  = np.load(data_dir+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
+        gt_box3d = np.load(data_dir+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
 
 
-        top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
-        front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
+        top_image   = cv2.imread(data_dir+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
+        front_image = cv2.imread(data_dir+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
 
         #rgbs.append(rgb)
         #lidars.append(lidar)
@@ -215,11 +200,17 @@ def  project_to_front_roi(rois3d):
 def run_train():
 
     # output dir, etc
-    out_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/out'
-    makedirs(out_dir +'/tf')
-    makedirs(out_dir +'/check_points')
-    log = Logger(out_dir+'/log.txt',mode='a')
+    out_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/out/'
+    makedirs(out_dir +'tf')
+    makedirs(out_dir +'check_points')
+    log = Logger(out_dir+'log.txt',mode='a')
+    rpn_dirs = ['img_gt', 'img_label', 'img_target', 'img_rpn', 'img_rpn_nms']
+    rcnn_dirs = ['img_label', 'img_target', 'img_rgb_rois', 'img_rcnn', 'img_rcnn_nms']
 
+    for rpn_dir in rpn_dirs:
+        makedirs(out_dir + rpn_dir)
+    for rcnn_dir in rcnn_dirs:
+        makedirs(out_dir + rcnn_dir)
     #lidar data -----------------
     if 1:
         ratios=np.array([0.5,1,2], dtype=np.float32)
@@ -331,10 +322,13 @@ def run_train():
         iter = 0
         num_save = 0
 
+
+
+
         while iter<max_iter :
         #for iter in range(max_iter):
             epoch=1.0*iter
-            rate=0.05
+            rate=0.005
 
 
             ## generate train image -------------
@@ -380,25 +374,31 @@ def run_train():
 
 
             ##debug gt generation
-            if 0 and iter%iter_debug==1:
+            if 1 and iter%iter_debug==0:
                 top_image = top_imgs[idx]
                 rgb       = rgbs[idx]
 
                 img_gt     = draw_rpn_gt(top_image, batch_gt_top_boxes, batch_gt_labels)
                 img_label  = draw_rpn_labels (top_image, anchors, batch_top_inds, batch_top_labels )
                 img_target = draw_rpn_targets(top_image, anchors, batch_top_pos_inds, batch_top_targets)
-                misc.imshow(img_gt)
-                misc.imshow(img_label)
-                misc.imshow(img_target)
+
+
+                cv2.imwrite(out_dir+'rpn/img_gt/img_gt%05d.png'%num_save, img_gt)
+                cv2.imwrite(out_dir+'rpn/img_label/img_label%05d.png'%num_save, img_label)
+                cv2.imwrite(out_dir+'rpn/img_target/img_target%05d.png'%num_save, img_target)
+
+
+
 
                 img_label  = draw_rcnn_labels (top_image, batch_top_rois, batch_fuse_labels )
                 img_target = draw_rcnn_targets(top_image, batch_top_rois, batch_fuse_labels, batch_fuse_targets)
-                misc.imshow(img_label)
-                misc.imshow(img_target)
+
+                cv2.imwrite(out_dir+'rcnn/img_label/img_label%05d.png'%num_save, img_label)
+                cv2.imwrite(out_dir+'rcnn/img_target/img_target%05d.png'%num_save, img_target)
 
 
                 img_rgb_rois = draw_boxes(rgb, batch_rgb_rois[:,1:5], color=(255,0,255), thickness=1)
-                misc.imshow(img_rgb_rois)
+                cv2.imwrite(out_dir+'rcnn/img_rgb_rois/img_rgb_rois%05d.png'%num_save, img_rgb_rois)
 
                 #cv2.waitKey(1)
 
@@ -407,11 +407,11 @@ def run_train():
                 ** fd1,
 
                 top_images: batch_top_images,
-                front_images: batch_front_images,
+                #front_images: batch_front_images,
                 rgb_images: batch_rgb_images,
 
                 top_rois:   batch_top_rois,
-                front_rois: batch_front_rois,
+                #front_rois: batch_front_rois,
                 rgb_rois:   batch_rgb_rois,
 
                 top_inds:     batch_top_inds,
@@ -460,40 +460,23 @@ def run_train():
                 plt.pause(0.01)
 
 				## show rpn(top) nms
+
                 img_rpn     = draw_rpn    (top_image, batch_top_probs, batch_top_deltas, anchors, inside_inds)
                 img_rpn_nms = draw_rpn_nms(top_image, batch_proposals, batch_proposal_scores)
-                pause_sec = 0.5
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rpn%05d.png'%num_save, img_rpn)
-                plt.imshow(img_rpn)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rpn_nms%05d.png'%num_save, img_rpn_nms)
-                plt.imshow(img_rpn_nms)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                #cv2.waitKey(1)
+                cv2.imwrite(out_dir+'rpn/img_rpn/img_rpn%05d.png'%num_save, img_rpn)
+                cv2.imwrite(out_dir+'rpn/img_rpn_nms/img_rpn_nms%05d.png'%num_save, img_rpn_nms)
 
                 ## show rcnn(fuse) nms
                 img_rcnn     = draw_rcnn (top_image, batch_fuse_probs, batch_fuse_deltas, batch_top_rois, batch_rois3d,darker=1)
                 img_rcnn_nms = draw_rcnn_nms(rgb, boxes3d, probs)
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rcnn%05d.png'%num_save, img_rcnn)
-                plt.imshow(img_rcnn)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/out/Image/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
-                #misc.imshow(img_rcnn_nms)
-                plt.show(block=False)
-                plt.pause(pause_sec)
-                plt.close()
-                #cv2.waitKey(1)
+                cv2.imwrite(out_dir+'rcnn/img_rcnn/img_rcnn%05d.png'%num_save, img_rcnn)
+                cv2.imwrite(out_dir+'img_rcnn_nms/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
+                print ('salam')
                 num_save += 1
             # save: ------------------------------------
             if iter%500==0:
                 #saver.save(sess, out_dir + '/check_points/%06d.ckpt'%iter)  #iter
-                saver.save(sess, out_dir + '/check_points/snap.ckpt')  #iter
+                saver.save(sess, out_dir + 'check_points/snap.ckpt')  #iter
 
             iter = iter + 1
 
