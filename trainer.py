@@ -6,14 +6,15 @@ from net.utility.draw import *
 CUDA_VISIBLE_DEVICES=1
 from dummynet import *
 from data import *
-
+from scipy import misc
 from net.rpn_loss_op import *
 from net.rcnn_loss_op import *
 from net.rpn_target_op import make_bases, make_anchors, rpn_target
 from net.rcnn_target_op import rcnn_target
+from net.rpn_nms_op import  draw_rpn_nms, filter_boxes,rpn_nms_generator, tf_rpn_nms
+import matplotlib.pyplot as plt
 
-from net.rpn_nms_op     import draw_rpn_nms
-from net.rcnn_nms_op    import rcnn_nms
+from net.rcnn_nms_op    import *
 from net.rpn_target_op  import draw_rpn_gt, draw_rpn_targets, draw_rpn_labels
 from net.rcnn_target_op import draw_rcnn_targets, draw_rcnn_labels
 
@@ -21,23 +22,45 @@ from net.rcnn_target_op import draw_rcnn_targets, draw_rcnn_labels
 #http://3dimage.ee.tsinghua.edu.cn/cxz
 # "Multi-View 3D Object Detection Network for Autonomous Driving" - Xiaozhi Chen, CVPR 2017
 
-def load_dummy_data():
-    rgb   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/rgb.npy')
-    lidar = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/lidar.npy')
-    top   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top.npy')
-    front = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/front.npy')
-    gt_labels    = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy')
-    gt_boxes3d   = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy')
-    gt_top_boxes = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_top_boxes.npy')
 
-    top_image   = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top_image.png')
-    front_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/front_image.png')
+def draw_rpn(image, probs, deltas, anchors, inside_inds, threshold=0.75, darker=0.7):
 
-    rgb =(rgb*255).astype(np.uint8)
-    rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-    gt_boxes3d = gt_boxes3d.reshape(-1,8,3)
+    ## yellow (thick): box regression results
+    ## red: box classification results
 
-    return  rgb, top, front, gt_labels, gt_boxes3d, top_image, front_image, lidar
+    img_rpn = image.copy()*darker
+    probs = probs.reshape(-1,2)
+    probs = probs[:,1]
+
+    deltas = deltas.reshape(-1,4)
+    inds = np.argsort(probs)[::-1]       #sort ascend #[::-1]
+
+    num_anchors = len(anchors)
+    insides = np.zeros((num_anchors),dtype=np.int32)
+    insides[inside_inds]=1
+    for j in range(100):
+        i = inds[j]
+        if insides[i]==0:
+            continue
+
+        a = anchors[i]
+        t = deltas[i]
+        b = box_transform_inv(a.reshape(1,4), t.reshape(1,4))
+        #b = clip_boxes(b,img_width,img_height)
+        b = b.reshape(-1)
+        s = probs[i]
+        if s<threshold:
+            continue
+
+        v = s*255
+        cv2.rectangle(img_rpn,(a[0], a[1]), (a[2], a[3]), (0,0,v), 1)
+        cv2.rectangle(img_rpn,(b[0], b[1]), (b[2], b[3]), (0,v,v), 1)
+
+    return img_rpn
+
+
+
+
 
 def box_to_box3d(boxes):
 
@@ -61,12 +84,14 @@ def load_dummy_datas():
     #drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
     #                               '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
     #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294,361,373,78,383,340,433]
-    datadir = '/home/dongwoo/Project/MV3D/data/raw/'
-    drives =  ['0001', '0002']#, '0011', '0013', '0017', '0018',
-                                 #  '0048', '0051', '0056']#, '0057', '0060', '0084', '0091']
-    num_frames = [108,77]#,154,443,233,144,314,114,270,22,438,294]
-    #drives = ['0001']
-    #num_frames = [108]
+
+    #drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
+    #                              '0048', '0051', '0056']
+    #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
+
+
+    drives = [ '0048']
+    num_frames = [22]
     rgbs      =[None] * sum(num_frames)
     lidars    =[None] * sum(num_frames)
     tops      =[None] * sum(num_frames)
@@ -78,23 +103,24 @@ def load_dummy_datas():
     front_images=[None] * sum(num_frames)
     num_drive = -1
     tmp = -1
-    #fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
+    fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
     for num_frame in num_frames:
       temp = tmp+1;
       num_drive += 1
       for n in range(tmp+1,num_frame+tmp+1):
         print(n)
+        data_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'
 
-        rgb   = cv2.imread(datadir+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
-        lidar = np.load(datadir+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
-        top   = np.load(datadir+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
-        front = np.load(datadir+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
-        gt_label  = np.load(datadir+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
-        gt_box3d = np.load(datadir+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
+        rgb   = cv2.imread(data_dir+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
+        lidar = np.load(data_dir+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
+        top   = np.load(data_dir+drives[num_drive]+'/top/top_%05d.npy'%(n-temp))
+        front = np.load(data_dir+drives[num_drive]+'/front/front_%05d.npy'%(n-temp))
+        gt_label  = np.load(data_dir+drives[num_drive]+'/gt_labels/gt_labels_%05d.npy'%(n-temp))
+        gt_box3d = np.load(data_dir+drives[num_drive]+'/gt_boxes3d/gt_boxes3d_%05d.npy'%(n-temp))
 
 
-        top_image   = cv2.imread(datadir+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
-        front_image = cv2.imread(datadir+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
+        top_image   = cv2.imread(data_dir+drives[num_drive]+'/top_image/top_image_%05d.png'%(n-temp),1)
+        front_image = cv2.imread(data_dir+drives[num_drive]+'/front_image/front_image_%05d.png'%(n-temp),1)
 
         #rgbs.append(rgb)
         #lidars.append(lidar)
@@ -123,8 +149,8 @@ def load_dummy_datas():
             rgb1 = draw_rgb_projections(rgb, projections, color=(255,255,255), thickness=2)
             top_image1 = draw_box3d_on_top(top_image, gt_box3d, color=(255,255,255), thickness=2)
 
-            #imshow('rgb',rgb1)
-            #imshow('top_image',top_image1)
+            misc.imshow(rgb1)
+            misc.imshow(top_image1)
 
             mlab.clf(fig)
             draw_lidar(lidar, fig=fig)
@@ -135,8 +161,8 @@ def load_dummy_datas():
             pass
 
 
-    ##exit(0)
-    #mlab.close(all=True)
+    #exit(0)
+    mlab.close(all=True)
     return  rgbs, tops, fronts, gt_labels, gt_boxes3d, top_images, front_images, lidars
 
 
@@ -174,11 +200,17 @@ def  project_to_front_roi(rois3d):
 def run_train():
 
     # output dir, etc
-    out_dir = '/home/dongwoo/Project/MV3D/data/out'
-    makedirs(out_dir +'/tf')
-    makedirs(out_dir +'/check_points')
-    log = Logger(out_dir+'/log.txt',mode='a')
+    out_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/out/'
+    makedirs(out_dir +'tf')
+    makedirs(out_dir +'check_points')
+    log = Logger(out_dir+'log.txt',mode='a')
+    rpn_dirs = ['img_gt', 'img_label', 'img_target', 'img_rpn', 'img_rpn_nms']
+    rcnn_dirs = ['img_label', 'img_target', 'img_rgb_rois', 'img_rcnn', 'img_rcnn_nms']
 
+    for rpn_dir in rpn_dirs:
+        makedirs(out_dir + rpn_dir)
+    for rcnn_dir in rcnn_dirs:
+        makedirs(out_dir + rcnn_dir)
     #lidar data -----------------
     if 1:
         ratios=np.array([0.5,1,2], dtype=np.float32)
@@ -203,12 +235,12 @@ def run_train():
 
         #-----------------------
         #check data
-        if 0:
+        if 1:
             fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
             draw_lidar(lidars[0], fig=fig)
             draw_gt_boxes3d(gt_boxes3d[0], fig=fig)
             mlab.show(1)
-            cv2.waitKey(1)
+            #cv2.waitKey(1)
 
 
 
@@ -266,8 +298,8 @@ def run_train():
     #solver_step = solver.minimize(top_cls_loss+top_reg_loss+l2)
     solver_step = solver.minimize(top_cls_loss+top_reg_loss+fuse_cls_loss+0.1*fuse_reg_loss+l2)
 
-    max_iter = 10000
-    iter_debug=8
+    max_iter = 100000
+    iter_debug=100
 
     # start training here  #########################################################################################
     log.write('epoch     iter    rate   |  top_cls_loss   reg_loss   |  fuse_cls_loss  reg_loss  |  \n')
@@ -288,10 +320,15 @@ def run_train():
         batch_fuse_cls_loss=0
         batch_fuse_reg_loss=0
         iter = 0
+        num_save = 0
+
+
+
+
         while iter<max_iter :
         #for iter in range(max_iter):
             epoch=1.0*iter
-            rate=0.05
+            rate=0.005
 
 
             ## generate train image -------------
@@ -337,25 +374,31 @@ def run_train():
 
 
             ##debug gt generation
-            if 1 and iter%iter_debug==1:
+            if 1 and iter%iter_debug==0:
                 top_image = top_imgs[idx]
                 rgb       = rgbs[idx]
 
                 img_gt     = draw_rpn_gt(top_image, batch_gt_top_boxes, batch_gt_labels)
                 img_label  = draw_rpn_labels (top_image, anchors, batch_top_inds, batch_top_labels )
                 img_target = draw_rpn_targets(top_image, anchors, batch_top_pos_inds, batch_top_targets)
-                #imshow('img_rpn_gt',img_gt)
-                #imshow('img_rpn_label',img_label)
-                #imshow('img_rpn_target',img_target)
+
+
+                cv2.imwrite(out_dir+'rpn/img_gt/img_gt%05d.png'%num_save, img_gt)
+                cv2.imwrite(out_dir+'rpn/img_label/img_label%05d.png'%num_save, img_label)
+                cv2.imwrite(out_dir+'rpn/img_target/img_target%05d.png'%num_save, img_target)
+
+
+
 
                 img_label  = draw_rcnn_labels (top_image, batch_top_rois, batch_fuse_labels )
                 img_target = draw_rcnn_targets(top_image, batch_top_rois, batch_fuse_labels, batch_fuse_targets)
-                #imshow('img_rcnn_label',img_label)
-                #imshow('img_rcnn_target',img_target)
+
+                cv2.imwrite(out_dir+'rcnn/img_label/img_label%05d.png'%num_save, img_label)
+                cv2.imwrite(out_dir+'rcnn/img_target/img_target%05d.png'%num_save, img_target)
 
 
                 img_rgb_rois = draw_boxes(rgb, batch_rgb_rois[:,1:5], color=(255,0,255), thickness=1)
-                #imshow('img_rgb_rois',img_rgb_rois)
+                cv2.imwrite(out_dir+'rcnn/img_rgb_rois/img_rgb_rois%05d.png'%num_save, img_rgb_rois)
 
                 #cv2.waitKey(1)
 
@@ -364,11 +407,11 @@ def run_train():
                 ** fd1,
 
                 top_images: batch_top_images,
-                front_images: batch_front_images,
+                #front_images: batch_front_images,
                 rgb_images: batch_rgb_images,
 
                 top_rois:   batch_top_rois,
-                front_rois: batch_front_rois,
+                #front_rois: batch_front_rois,
                 rgb_rois:   batch_rgb_rois,
 
                 top_inds:     batch_top_inds,
@@ -391,8 +434,8 @@ def run_train():
 
 
             # debug: ------------------------------------
-
             if iter%iter_debug==0:
+
                 top_image = top_imgs[idx]
                 rgb       = rgbs[idx]
 
@@ -417,23 +460,23 @@ def run_train():
                 plt.pause(0.01)
 
 				## show rpn(top) nms
-                #img_rpn     = draw_rpn    (top_image, batch_top_probs, batch_top_deltas, anchors, inside_inds)
+
+                img_rpn     = draw_rpn    (top_image, batch_top_probs, batch_top_deltas, anchors, inside_inds)
                 img_rpn_nms = draw_rpn_nms(top_image, batch_proposals, batch_proposal_scores)
-                #imshow('img_rpn',img_rpn)
-                #imshow('img_rpn_nms',img_rpn_nms)
-                #cv2.waitKey(1)
+                cv2.imwrite(out_dir+'rpn/img_rpn/img_rpn%05d.png'%num_save, img_rpn)
+                cv2.imwrite(out_dir+'rpn/img_rpn_nms/img_rpn_nms%05d.png'%num_save, img_rpn_nms)
 
                 ## show rcnn(fuse) nms
-                #img_rcnn     = draw_rcnn (top_image, batch_fuse_probs, batch_fuse_deltas, batch_top_rois, batch_rois3d,darker=1)
-                #img_rcnn_nms = draw_rcnn_nms(rgb, boxes3d, probs)
-                #imshow('img_rcnn',img_rcnn)
-                #imshow('img_rcnn_nms',img_rcnn_nms)
-                #cv2.waitKey(1)
-
+                img_rcnn     = draw_rcnn(top_image, batch_fuse_probs, batch_fuse_deltas, batch_top_rois, batch_rois3d,darker=1)
+                img_rcnn_nms = draw_rcnn_nms(rgb, boxes3d, probs)
+                cv2.imwrite(out_dir+'rcnn/img_rcnn/img_rcnn%05d.png'%num_save, img_rcnn)
+                cv2.imwrite(out_dir+'img_rcnn_nms/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
+                print ('salam')
+                num_save += 1
             # save: ------------------------------------
             if iter%500==0:
                 #saver.save(sess, out_dir + '/check_points/%06d.ckpt'%iter)  #iter
-                saver.save(sess, out_dir + '/check_points/snap.ckpt')  #iter
+                saver.save(sess, out_dir + 'check_points/snap.ckpt')  #iter
 
             iter = iter + 1
 
@@ -445,4 +488,4 @@ def run_train():
 
 if __name__ == '__main__':
     print( '%s: calling main function ... ' % os.path.basename(__file__))
-    run_train()
+run_train()

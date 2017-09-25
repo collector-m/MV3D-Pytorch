@@ -12,6 +12,7 @@ from kitti_data.draw import *
 from kitti_data.io import *
 import time
 from net.utility.draw import *
+import io_object
 #from mayavi import mlab
 #mlab.init_notebook()
 #mlab.test_contour3d()
@@ -118,7 +119,10 @@ def obj_to_gt_boxes3d(objs):
     for n in range(num):
         obj = objs[n]
         b   = obj.box
-        label = 1 #<todo>
+        if obj.type == 'Pedestrian':
+            label = 2 #<todo>
+        else:
+            label = 1
 
         gt_labels [n]=label
         gt_boxes3d[n]=b
@@ -140,21 +144,7 @@ def removePoints(PointCloud):
     #imgH = 370; imgW = 1224
     mask = np.where((PointCloud[:, 0] >= minX) & (PointCloud[:, 0]<=maxX) & (PointCloud[:, 1] >= minY) & (PointCloud[:, 1]<=maxY) & (PointCloud[:, 2] >= minZ) & (PointCloud[:, 2]<=maxZ))
     PointCloud = PointCloud[mask]
-    """
-    # Remove the point out of image size
-    PointCloud_proj = np.copy(PointCloud)
-    PointCloud_proj[:,3] = 1
-    PointCloud_proj = np.dot(Tr_velo2cam, PointCloud_proj.T)
-    PointCloud_proj = np.dot(Tr_rect, PointCloud_proj)
-    PointCloud_proj = np.dot(Tr_p2, PointCloud_proj).T
 
-    PointCloud_z = PointCloud_proj[:,2]
-    PointCloud_proj = PointCloud_proj / PointCloud_z[:,None]
-
-    mask = np.where((PointCloud_proj[:,0] >= 1) & (PointCloud_proj[:,0] <= imgW) & (PointCloud_proj[:,1] >=1) & (PointCloud_proj[:,1] <= imgH))    
-    PointCloud_proj = PointCloud_proj[mask]
-    PointCloud = PointCloud[mask]
-    """
     return PointCloud
 
 def lidar_to_front(PointCloud, FeatureSize):
@@ -162,7 +152,6 @@ def lidar_to_front(PointCloud, FeatureSize):
 
     height = FeatureSize['height']
     width = FeatureSize['width']
-
 
     nPoint = PointCloud.shape[0]
     x = PointCloud[:, 0]
@@ -174,12 +163,23 @@ def lidar_to_front(PointCloud, FeatureSize):
     r = np.arctan2(z, np.linalg.norm(xy, axis=1))
 
     # Normalizing the coordinate of c and r
+    
     # Some issuses occurs when doing ROI pooling
     minC = np.amin(c);
     maxC = np.amax(c)
     minR = np.amin(r);
     maxR = np.amax(r)
+    """
+    minX = TOP_X_MIN ; maxX = TOP_X_MAX
+    minY = TOP_Y_MIN ; maxY = TOP_Y_MAX
+    minZ = TOP_Z_MIN ; maxZ = TOP_Z_MAX   
 
+    minC = np.arctan2(maxY, minX)
+    maxC = np.arctan2()
+    minR = np.arctan2(,)
+    maxR = np.arctan2(,)
+    """
+    
     c = (width - 1) - np.around((c - minC) * (width - 1) / (maxC - minC))
     r = (height - 1) - np.around((r - minR) * (height - 1) / (maxR - minR))
 
@@ -203,10 +203,7 @@ def lidar_to_front(PointCloud, FeatureSize):
     front_image = (front_image/np.max(front_image)*255)
     front_image = np.dstack((front_image, front_image, front_image)).astype(np.uint8)
 
-
     return output, front_image
-
-
 
 
 ## lidar to top ##
@@ -224,56 +221,51 @@ def lidar_to_top(lidar):
     pzs=lidar[:,2]
     prs=lidar[:,3]
 
+    # Discretize feature Map
     qxs=((pxs-TOP_X_MIN)//TOP_X_DIVISION).astype(np.int32)
     qys=((pys-TOP_Y_MIN)//TOP_Y_DIVISION).astype(np.int32)
     qzs=((pzs-TOP_Z_MIN)//TOP_Z_DIVISION).astype(np.int32)
+    PointCloud = np.vstack((qxs, qys, pzs, prs)).T
 
+    # sort increasing order from z->y->x, use stable(lex) sort
+    indices = np.lexsort((-PointCloud[:,2],PointCloud[:,1],PointCloud[:,0]))
+    PointCloud = PointCloud[indices, :]
+    qzs = qzs[indices]
+
+    # Initialize zeros to top feature map
     print('height,width,channel=%d,%d,%d'%(height,width,channel))
     top = np.zeros(shape=(height,width,channel), dtype=np.float32)
 
-    ## start to make top  here !!!
-    for z in range(Z0,Zn):
-        iz = np.where (qzs==z)
-        for y in range(Y0,Yn):
-            iy  = np.where (qys==y)
-            iyz = np.intersect1d(iy, iz)
+    # Height Map
+    heightMap = np.zeros((height,width,channel - 2)) # 2 for density & Intensity
+    for i in range(Z0, Zn):
+        mask_height = np.where((qzs[:] == i))
+        PointCloud_height = PointCloud[mask_height]
+        
+        # Remove the point with same (x,y,z) value, remaining the maximum value
+        if PointCloud_height.shape[0] !=0:
+            _, indices = np.unique(PointCloud_height[:,0:2], axis=0, return_index=True)
+            PointCloud_height = PointCloud_height[indices]
+            # Feed in the maximum height(before discretize) of each voxel
+            top[np.int_(PointCloud_height[:,0]), np.int_(PointCloud_height[:,1]), i] = PointCloud_height[:,2]
+    # Intensity Map & Density Map
+    # Remains (x, y, max_z)
+    _, indices, counts = np.unique(PointCloud[:,0:2], axis=0, return_index=True,return_counts = True)
+    PointCloud_top = PointCloud[indices]
 
-            for x in range(X0,Xn):
-                #print('', end='\r',flush=True)
-                #print(z,y,z,flush=True)
+    normalizedCounts = np.minimum(1.0, np.log(counts + 1)/np.log(64))
 
-                ix = np.where (qxs==x)
-                idx = np.intersect1d(ix,iyz)
-
-                if len(idx)>0:
-                    yy,xx,zz = -(x-X0),-(y-Y0),z-Z0
-
-
-                    #height per slice
-                    max_height = max(0,np.max(pzs[idx])-TOP_Z_MIN)
-                    top[yy,xx,zz]=max_height
-
-                    #intensity
-                    max_intensity = np.max(prs[idx])
-                    top[yy,xx,Zn]=max_intensity
-
-                    #density
-                    count = len(idx)
-                    top[yy,xx,Zn+1]+=count
-
-                pass
-            pass
-        pass
-    top[:,:,Zn+1] = np.log(top[:,:,Zn+1]+1)/math.log(64)
+    top[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1]), channel - 2] = PointCloud_top[:,3]
+    top[np.int_(PointCloud_top[:,0]), np.int_(PointCloud_top[:,1]), channel - 1] = normalizedCounts
 
     if 1:
-        top_image = np.sum(top,axis=2)
+        top_image = top[:,:,channel-1]#np.sum(top,axis=2)
         top_image = top_image-np.min(top_image)
         top_image = (top_image/np.max(top_image)*255)
         top_image = np.dstack((top_image, top_image, top_image)).astype(np.uint8)
 
 
-    if 1: #unprocess
+    if 0: #unprocess
         top_image = np.zeros((height,width,3),dtype=np.float32)
 
         num = len(lidar)
@@ -287,8 +279,7 @@ def lidar_to_top(lidar):
         top_image=top_image.astype(dtype=np.uint8)
 
 
-    return top, top_image
-
+    return top, top_image    
 
 ## drawing ####
 
@@ -387,228 +378,195 @@ def draw_gt_boxes3d(gt_boxes3d, fig, color=(1,1,1), line_width=2):
 # main #################################################################33
 if __name__ == '__main__':
     print( '%s: calling main function ... ' % os.path.basename(__file__))
-
-    basedir = '/home/dongwoo/Project/dataset/KITTI/Raw'
-    outdir = '/home/dongwoo/Project/MV3D/data/raw/'
-    date  = '2011_09_26'
-    drives = ['0001','0002', '0011', '0013', '0017', '0018',
-                                   '0048', '0051', '0056', '0057', '0060', '0084', '0091'] # 0009, 0005
-    #drives = ['0002', '0029', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
-     #                              '0048', '0051', '0056', '0057', '0059', '0060', '0084', '0091', '0093']
-    for drive in drives:
-
-        # The range argument is optional - default is None, which loads the whole dataset
-        dataset = pykitti.raw(basedir, date, drive) #, range(0, 50, 5))
-
-        # Load some data
-        #dataset.load_calib()         # Calibration data are accessible as named tuples
-        #dataset.load_timestamps()    # Timestamps are parsed into datetime objects
-        #dataset.load_oxts()          # OXTS packets are loaded as named tuples
-        #dataset.load_gray()         # Left/right images are accessible as named tuples
-        dataset.load_rgb()          # Left/right images are accessible as named tuples
-        dataset.load_velo()          # Each scan is a Nx4 array of [x,y,z,reflectance]
-
-        tracklet_file = basedir+'/2011_09_26/2011_09_26_drive_'+drive+'_sync/tracklet_labels.xml'
-
-        num_frames=len(dataset.velo)  #154
-        objects = read_objects(tracklet_file, num_frames)
-
-        ############# convert   ###########################  ************************************
-        os.makedirs( outdir   +drive)
-
-        if 1:  ## rgb images --------------------
-            os.makedirs(outdir+drive+'/rgb/')
-
-            for n in range(num_frames):
-                print(n)
-                rgb = dataset.rgb[n][0]
-                rgb =(rgb*255).astype(np.uint8)
-                rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(outdir+drive+'/rgb/rgb_%05d.png'%n,rgb)
+    
+    basedir = '/home/dongwoo/Project/dataset/KITTI/Object/training'
+    outdir = '/home/dongwoo/Project/MV3D/data/object'
 
 
-        if 1:  ## front images --------------------
-            os.makedirs(outdir+drive+'/front')
-            os.makedirs(outdir+drive+'/front_image')
+    dataset_rgb = io_object.load_rgb(basedir)
+    dataset_velo = io_object.load_velo(basedir)
+    objects = io_object.load_label(basedir)
+    num_frames=len(dataset_velo)  #154
+    #objects = read_objects(tracklet_file, num_frames)
+
+    ############# convert   ###########################  ************************************
+    #os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive)
+
+    #remove unseen velo points at image view 
+    for n in range(num_frames):
+        dataset_velo[n] = removePoints(dataset_velo[n])
 
 
-            for n in range(num_frames):
-                print(n)
-                FeatureSize = {}
-                FeatureSize['height'] = 64
-                FeatureSize['width'] = 512
-                lidar = dataset.velo[n]
-                front, front_image = lidar_to_front(lidar,FeatureSize)
-                cv2.imwrite(outdir+drive+'/front_image/front_image_%05d.png'%n,front_image)
-                np.save(outdir+drive+'/front/front_%05d.npy'%n,front)
+    if 1:  ## rgb images --------------------
+        if not os.path.exists(outdir+'/rgb/'):
+            os.makedirs(outdir+'/rgb/')
 
-        """
-        if 1:  ## top images --------------------
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar')
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top')
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image')
-
-            for n in range(num_frames):
-                print(n)
-                lidar = dataset.velo[n]
-                top, top_image = lidar_to_top(lidar)
-
-                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/lidar/lidar_%05d.npy'%n,lidar)
-                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top/top_%05d.npy'%n,top)
-                cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_image_%05d.png'%n,top_image)
-
-            #exit(0)
+        for n in range(num_frames):
+            print(n)
+            rgb = dataset_rgb[n]
+            #rgb =(rgb*255).astype(np.uint8)
+            rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(outdir+'/rgb/rgb_%05d.png'%n,rgb)
 
 
-
-        if 1:  ## boxes3d  --------------------
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d')
-            os.makedirs('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_labels')
-            for n in range(num_frames):
-                print(n)
-                objs = objects[n]
-                gt_boxes3d, gt_labels = obj_to_gt_boxes3d(objs)
-
-                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n,gt_boxes3d)
-                np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_labels/gt_labels_%05d.npy'%n,gt_labels)
-
-            #exit(0)
+    if 1:  ## front images --------------------
+        if not os.path.exists(outdir+'/front/'):
+            os.makedirs(outdir+'/front')
+            os.makedirs(outdir+'/front_image')
 
 
-        ############# analysis ########################### *************************************
-        if 1: ## make mean
-            mean_image = np.zeros((400,400),dtype=np.float32)
-            num_frames=20
-            for n in range(num_frames):
-                print(n)
-                top_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_image_%05d.png'%n,0)
-                mean_image += top_image.astype(np.float32)
-
-            mean_image = mean_image/num_frames
-            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_mean_image.png',mean_image)
+        for n in range(num_frames):
+            print(n)
+            FeatureSize = {}
+            FeatureSize['height'] = 64
+            FeatureSize['width'] = 512
+            lidar = dataset_velo[n]
+            front, front_image = lidar_to_front(lidar,FeatureSize)
+            cv2.imwrite(outdir+'/front_image/front_image_%05d.png'%n,front_image)
+            np.save(outdir+'/front/front_%05d.npy'%n,front)
 
 
-        if 1: ## gt_3dboxes distribution ... location and box, height
-            depths =[]
-            aspects=[]
-            scales =[]
-            mean_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_mean_image.png',0)
+    if 1:  ## top images --------------------
+        if not os.path.exists(outdir+'/lidar/'):
+            os.makedirs(outdir+'/lidar')
+            os.makedirs(outdir+'/top')
+            os.makedirs(outdir+'/top_image')
 
-            for n in range(num_frames):
-                print(n)
-                gt_boxes3d = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n)
-
-                top_boxes = box3d_to_top_box(gt_boxes3d)
-                draw_box3d_on_top(mean_image, gt_boxes3d,color=(255,255,255), thickness=1, darken=1)
-
-
-                for i in range(len(top_boxes)):
-                    x1,y1,x2,y2 = top_boxes[i]
-                    w = math.fabs(x2-x1)
-                    h = math.fabs(y2-y1)
-                    area = w*h
-                    s = area**0.5
-                    scales.append(s)
-
-                    a = w/h
-                    aspects.append(a)
-
-                    box3d = gt_boxes3d[i]
-                    d = np.sum(box3d[0:4,2])/4 -  np.sum(box3d[4:8,2])/4
-                    depths.append(d)
-
-            depths  = np.array(depths)
-            aspects = np.array(aspects)
-            scales  = np.array(scales)
-
-            np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/depths.txt',depths)
-            np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/aspects.txt',aspects)
-            np.savetxt('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/scales.txt',scales)
-            cv2.imwrite('/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'+drive+'/top_image/top_rois.png',mean_image)
-
-
-
-
-
-
-
-
-        #----------------------------------------------------------
-        #----------------------------------------------------------
-        #exit(0)
-
-
-
-
-
-        #----------------------------------------------------------
-        lidar = dataset.velo[0]
-
-        objs = objects[0]
-        gt_labels, gt_boxes, gt_boxes3d = obj_to_gt(objs)
-
-        fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
-        draw_lidar(lidar, fig=fig)
-        draw_gt_boxes3d(gt_boxes3d, fig=fig)
-        mlab.show(1)
-
-        print ('** calling lidar_to_tops() **')
-        if 1:
+        for n in range(num_frames):
+            print(n)
+            lidar = dataset_velo[n]
             top, top_image = lidar_to_top(lidar)
-            rgb = dataset.rgb[0][0]
-        else:
-            top = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top.npy')
-            top_image = cv2.imread('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/top_image.png')
-            rgb = np.load('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/rgb.npy')
 
-        rgb =(rgb*255).astype(np.uint8)
-        rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        # -----------
+            np.save(outdir+'/lidar/lidar_%05d.npy'%n,lidar)
+            np.save(outdir+'/top/top_%05d.npy'%n,top)
+            cv2.imwrite(outdir+'/top_image/top_image_%05d.png'%n,top_image)
 
-
-
-        #check
-        num = len(gt_boxes)
-        for n in range(num):
-           x1,y1,x2,y2 = gt_boxes[n]
-           cv2.rectangle(top_image,(x1,y1), (x2,y2), (0,255,255), 1)
-
-
-        ## check
-        boxes3d0 = box_to_box3d(gt_boxes)
-
-        draw_gt_boxes3d(boxes3d0,  color=(1,1,0), line_width=1, fig=fig)
-        mlab.show(1)
-
-        for n in range(num):
-            qs = make_projected_box3d(gt_boxes3d[n])
-            draw_projected_box3d(rgb,qs)
-
-        #imshow('rgb',rgb)
-        #cv2.waitKey(0)
-
-
-
-
-        #save
-        #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/rgb.npy',rgb)
-        #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/lidar.npy',lidar)
-        #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/top.npy',top)
-        #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.png',top_image)
-        #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.maked.png',top_image)
-
-        np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy',gt_labels)
-        np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes.npy',gt_boxes)
-        np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy',gt_boxes3d)
-
-        #imshow('top_image',top_image)
-        #cv2.waitKey(0)
-
-        #pause
         #exit(0)
-        """
+
+
+
+    if 1:  ## boxes3d  --------------------
+        if not os.path.exists(outdir+'/gt_boxes3d/'):
+            os.makedirs(outdir+'/gt_boxes3d')
+            os.makedirs(outdir+'/gt_labels')
+        for n in range(num_frames):
+            print(n)
+            objs = objects[n]
+            gt_boxes3d, gt_labels = obj_to_gt_boxes3d(objs)
+
+            np.save(outdir+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n,gt_boxes3d)
+            np.save(outdir+'/gt_labels/gt_labels_%05d.npy'%n,gt_labels)
+
+        #exit(0)
+
+
+    ############# analysis ########################### *************************************
+    if 1: ## make mean
+        mean_image = np.zeros((400,400),dtype=np.float32)
+        num_frames=20
+        for n in range(num_frames):
+            print(n)
+            top_image = cv2.imread(outdir+'/top_image/top_image_%05d.png'%n,0)
+            mean_image += top_image.astype(np.float32)
+
+        mean_image = mean_image/num_frames
+        cv2.imwrite(outdir+'/top_image/top_mean_image.png',mean_image)
+
+
+    if 1: ## gt_3dboxes distribution ... location and box, height
+        depths =[]
+        aspects=[]
+        scales =[]
+        mean_image = cv2.imread(outdir+'/top_image/top_mean_image.png',0)
+
+        for n in range(num_frames):
+            print(n)
+            gt_boxes3d = np.load(outdir+'/gt_boxes3d/gt_boxes3d_%05d.npy'%n)
+
+            top_boxes = box3d_to_top_box(gt_boxes3d)
+            draw_box3d_on_top(mean_image, gt_boxes3d,color=(255,255,255), thickness=1, darken=1)
+
+
+            for i in range(len(top_boxes)):
+                x1,y1,x2,y2 = top_boxes[i]
+                w = math.fabs(x2-x1)
+                h = math.fabs(y2-y1)
+                area = w*h
+                s = area**0.5
+                scales.append(s)
+
+                a = w/h
+                aspects.append(a)
+
+                box3d = gt_boxes3d[i]
+                d = np.sum(box3d[0:4,2])/4 -  np.sum(box3d[4:8,2])/4
+                depths.append(d)
+
+        depths  = np.array(depths)
+        aspects = np.array(aspects)
+        scales  = np.array(scales)
+
+        np.savetxt(outdir+'/depths.txt',depths)
+        np.savetxt(outdir+'/aspects.txt',aspects)
+        np.savetxt(outdir+'/scales.txt',scales)
+        cv2.imwrite(outdir+'/top_image/top_rois.png',mean_image)
+
+    #----------------------------------------------------------
+    #----------------------------------------------------------
+    #exit(0)
+
+    #----------------------------------------------------------
+    lidar = dataset_velo[0]
+
+    objs = objects[0]
+    gt_labels, gt_boxes, gt_boxes3d = obj_to_gt(objs)
+
+#    fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
+#    draw_lidar(lidar, fig=fig)
+    #draw_gt_boxes3d(gt_boxes3d, fig=fig)
+    #mlab.show(1)
+ 
+
+
+    #check
+    num = len(gt_boxes)
+    for n in range(num):
+        x1,y1,x2,y2 = gt_boxes[n]
+        cv2.rectangle(top_image,(x1,y1), (x2,y2), (0,255,255), 1)
+
+
+    ## check
+    boxes3d0 = box_to_box3d(gt_boxes)
+
+    #draw_gt_boxes3d(boxes3d0,  color=(1,1,0), line_width=1, fig=fig)
+    #mlab.show(1)
+
+    for n in range(num):
+        qs = make_projected_box3d(gt_boxes3d[n])
+        draw_projected_box3d(rgb,qs)
+
+    #imshow('rgb',rgb)
+    #cv2.waitKey(0)
 
 
 
 
+    #save
+    #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/rgb.npy',rgb)
+    #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/lidar.npy',lidar)
+    #np.save('/root/share/project/didi/data/kitti/dummy/one_frame/top.npy',top)
+    #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.png',top_image)
+    #cv2.imwrite('/root/share/project/didi/data/kitti/dummy/one_frame/top_image.maked.png',top_image)
 
+ #  np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_labels.npy',gt_labels)
+  #  np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes.npy',gt_boxes)
+ #   np.save('/home/mohsen/Desktop/didi-udacity-2017-master/data/one_frame/gt_boxes3d.npy',gt_boxes3d)
+
+    #imshow('top_image',top_image)
+    #cv2.waitKey(0)
+
+    #pause
+    #exit(0)
+
+
+ 
