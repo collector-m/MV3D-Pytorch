@@ -18,7 +18,7 @@ from net.rcnn_nms_op    import *
 from net.rpn_target_op  import draw_rpn_gt, draw_rpn_targets, draw_rpn_labels
 from net.rcnn_target_op import draw_rcnn_targets, draw_rcnn_labels
 
-
+from datetime import datetime
 #http://3dimage.ee.tsinghua.edu.cn/cxz
 # "Multi-View 3D Object Detection Network for Autonomous Driving" - Xiaozhi Chen, CVPR 2017
 
@@ -89,9 +89,10 @@ def load_dummy_datas():
     #                              '0048', '0051', '0056']
     #num_frames = [108,77,154,443,233,144,314,114,270,22,438,294]
 
-
-    drives = [ '0048']
-    num_frames = [22]
+    #data_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'
+    data_dir = '/home/dongwoo/Project/MV3D/data/object/'
+    drives = [ '']
+    num_frames = [32]
     rgbs      =[None] * sum(num_frames)
     lidars    =[None] * sum(num_frames)
     tops      =[None] * sum(num_frames)
@@ -109,7 +110,7 @@ def load_dummy_datas():
       num_drive += 1
       for n in range(tmp+1,num_frame+tmp+1):
         print(n)
-        data_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'
+        
 
         rgb   = cv2.imread(data_dir+drives[num_drive]+'/rgb/rgb_%05d.png'%(n-temp),1)
         lidar = np.load(data_dir+drives[num_drive]+'/lidar/lidar_%05d.npy'%(n-temp))
@@ -198,9 +199,10 @@ def  project_to_front_roi(rois3d):
 
 
 def run_train():
-
+    now = datetime.now()
     # output dir, etc
-    out_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/out/'
+    #out_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/out/'
+    out_dir = '/home/dongwoo/Project/MV3D/out_{}_{}_{}/'.format(now.day,now.hour,now.minute)
     makedirs(out_dir +'tf')
     makedirs(out_dir +'check_points')
     log = Logger(out_dir+'log.txt',mode='a')
@@ -241,8 +243,6 @@ def run_train():
             draw_gt_boxes3d(gt_boxes3d[0], fig=fig)
             mlab.show(1)
             #cv2.waitKey(1)
-
-
 
     # set anchor boxes
     
@@ -322,9 +322,6 @@ def run_train():
         iter = 0
         num_save = 0
 
-
-
-
         while iter<max_iter :
         #for iter in range(max_iter):
             epoch=1.0*iter
@@ -366,7 +363,7 @@ def run_train():
                 rpn_target ( anchors, inside_inds, batch_gt_labels,  batch_gt_top_boxes)
 
             batch_top_rois, batch_fuse_labels, batch_fuse_targets  = \
-                 rcnn_target(  batch_proposals, batch_gt_labels, batch_gt_top_boxes, batch_gt_boxes3d )
+                 rcnn_target( batch_proposals, batch_gt_labels, batch_gt_top_boxes, batch_gt_boxes3d )
 
             batch_rois3d	 = project_to_roi3d    (batch_top_rois)
             batch_front_rois = project_to_front_roi(batch_rois3d  )
