@@ -475,7 +475,7 @@ def run_train():
                 min_ = np.amin(z_axis,1)
                 print("gt width")
                 print(max_-min_)
-
+                """
                 ## show rpn score maps
                 """
                 p = batch_top_probs.reshape(*(top_feature_shape[0:2]), 2 * num_bases)

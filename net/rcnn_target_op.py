@@ -139,7 +139,7 @@ def draw_rcnn_targets(image, rois, labels,  targets, darker=0.7):
 
         if targets.shape[1:]==(8,3):
             t = targets[n]
-            a3d = box_to_box3d(a.reshape(1,4))
+            a3d = top_box_to_box3d(a.reshape(1,4))
             b3d = box3d_transform_inv(a3d, t.reshape(1,8,3))
             b3d = b3d.reshape(8,3)
             draw_box3d_on_top(img_target, b3d)
@@ -170,7 +170,7 @@ def draw_rcnn(image, probs,  deltas, rois, threshold=0.75, darker=0.7):
         ## <todo>
 
     if deltas.shape[1:]==(8,3):
-        priors3d = box_to_box3d(priors)
+        priors3d = top_box_to_box3d(priors)
         boxes3d  = box3d_transform_inv(priors3d, deltas)
 
         num = len(boxes3d)

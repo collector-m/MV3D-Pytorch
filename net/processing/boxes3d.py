@@ -43,7 +43,7 @@ def top_box_to_box3d(boxes):
             boxes3d[n,4+k,:] = x,y,0.4
 
     return boxes3d
-
+"""
 def box_to_box3d(boxes):
 
     num=len(boxes)
@@ -59,7 +59,7 @@ def box_to_box3d(boxes):
             boxes3d[n,4+k,:] = x,y,-2
 
     return boxes3d
-
+"""
 
 def box3d_to_top_box(boxes3d):
 
