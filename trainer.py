@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 from net.rcnn_nms_op    import *
 from net.rpn_target_op  import draw_rpn_gt, draw_rpn_targets, draw_rpn_labels
 from net.rcnn_target_op import draw_rcnn_targets, draw_rcnn_labels
+#import mayavi.mlab as mlab
+
+
 
 from datetime import datetime
 #http://3dimage.ee.tsinghua.edu.cn/cxz
@@ -59,26 +62,6 @@ def draw_rpn(image, probs, deltas, anchors, inside_inds, threshold=0.75, darker=
     return img_rpn
 
 
-
-
-
-def box_to_box3d(boxes):
-
-    num=len(boxes)
-
-    boxes3d = np.zeros((num,8,3),dtype=np.float32)
-    for n in range(num):
-        x1,y1,x2,y2 = boxes[n]
-
-        points = [ (x1,y1), (x1,y2), (x2,y2), (x2,y1) ]
-        for k in range(4):
-            xx,yy = points[k]
-            x,y,_ = top_to_lidar_coords(xx,yy)
-            boxes3d[n,k,  :] = x,y,0.4
-            boxes3d[n,4+k,:] = x,y,-2
-
-    return boxes3d
-
 def load_dummy_datas():
 
     #drives = ['0001', '0002', '0005', '0009', '0011', '0013', '0014', '0017', '0018',
@@ -91,8 +74,11 @@ def load_dummy_datas():
 
     #data_dir = '/home/mohsen/Desktop/didi-udacity-2017-master/data/seg/'
     data_dir = '/home/dongwoo/Project/MV3D/data/object/'
+    data_dir = '/home/dongwoo/Project/MV3D/data/seg/'
+    
     drives = [ '']
-    num_frames = [32]
+    drives = [ '0005']
+    num_frames = [1]
     rgbs      =[None] * sum(num_frames)
     lidars    =[None] * sum(num_frames)
     tops      =[None] * sum(num_frames)
@@ -104,7 +90,7 @@ def load_dummy_datas():
     front_images=[None] * sum(num_frames)
     num_drive = -1
     tmp = -1
-    fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
+    #fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
     for num_frame in num_frames:
       temp = tmp+1;
       num_drive += 1
@@ -142,6 +128,8 @@ def load_dummy_datas():
         front_images[n] = front_image
         tmp = n
 
+        #print(gt_box3d)
+        #print(gt_box3d.dtype)
         # explore dataset:
 
         #print (gt_box3d)
@@ -163,7 +151,7 @@ def load_dummy_datas():
 
 
     #exit(0)
-    mlab.close(all=True)
+    #mlab.close(all=True)
     return  rgbs, tops, fronts, gt_labels, gt_boxes3d, top_images, front_images, lidars
 
 
@@ -210,9 +198,9 @@ def run_train():
     rcnn_dirs = ['img_label', 'img_target', 'img_rgb_rois', 'img_rcnn', 'img_rcnn_nms']
 
     for rpn_dir in rpn_dirs:
-        makedirs(out_dir + rpn_dir)
+        makedirs(out_dir + 'rpn/'+rpn_dir)
     for rcnn_dir in rcnn_dirs:
-        makedirs(out_dir + rcnn_dir)
+        makedirs(out_dir + 'rcnn/'+rcnn_dir)
     #lidar data -----------------
     if 1:
         ratios=np.array([0.5,1,2], dtype=np.float32)
@@ -237,7 +225,7 @@ def run_train():
 
         #-----------------------
         #check data
-        if 1:
+        if 0:
             fig = mlab.figure(figure=None, bgcolor=(0,0,0), fgcolor=None, engine=None, size=(1000, 500))
             draw_lidar(lidars[0], fig=fig)
             draw_gt_boxes3d(gt_boxes3d[0], fig=fig)
@@ -307,7 +295,7 @@ def run_train():
 
     num_ratios=len(ratios)
     num_scales=len(scales)
-    fig, axs = plt.subplots(num_ratios,num_scales)
+    #fig, axs = plt.subplots(num_ratios,num_scales)
 
     sess = tf.InteractiveSession()
     with sess.as_default():
@@ -333,7 +321,7 @@ def run_train():
             #print (idx)
             batch_top_images    = tops[idx].reshape(1,*top_shape)
             batch_front_images  = fronts[idx].reshape(1,*front_shape)
-            batch_rgb_images    = rgbs[idx].reshape(1,*rgb_shape)
+            batch_rgb_images    = np.resize(rgbs[idx],rgb_shape).reshape(1,*rgb_shape)
 
             batch_gt_labels    = gt_labels[idx]
             batch_gt_boxes3d   = gt_boxes3d[idx]
@@ -445,8 +433,51 @@ def run_train():
                 #batch_fuse_deltas=0*batch_fuse_deltas #disable 3d box prediction
                 probs, boxes3d = rcnn_nms(batch_fuse_probs, batch_fuse_deltas, batch_rois3d, threshold=0.5)
 
+                """
+                print("prob (before nms)")
+                print(batch_fuse_probs[:,1])
+                print("prob (after nms)")
+                print(probs)
+
+                num = batch_fuse_deltas.shape[0]
+                z_axis = batch_fuse_deltas[:,1,:,2]
+                max_ = np.amax(z_axis,1)
+                min_ = np.amin(z_axis,1)
+                print("estimated height (before nms)")
+                print(max_-min_)
+
+                z_axis = boxes3d[:,:,2]
+                max_ = np.amax(z_axis,1)
+                min_ = np.amin(z_axis,1)
+                print("estimated height (after nms)")
+                print(max_-min_)
+
+                z_axis = batch_gt_boxes3d[:,:,2]
+                max_ = np.amax(z_axis,1)
+                min_ = np.amin(z_axis,1)
+                print("gt height")
+                print(max_-min_)
+
+                z_axis = batch_fuse_deltas[:,1,:,0]
+                max_ = np.amax(z_axis,1)
+                min_ = np.amin(z_axis,1)
+                print("estimated width (before nms)")
+                print(max_-min_)
+
+                z_axis = boxes3d[:,:,0]
+                max_ = np.amax(z_axis,1)
+                min_ = np.amin(z_axis,1)
+                print("estimated width (after nms)")
+                print(max_-min_)
+                
+                z_axis = batch_gt_boxes3d[:,:,0]
+                max_ = np.amax(z_axis,1)
+                min_ = np.amin(z_axis,1)
+                print("gt width")
+                print(max_-min_)
 
                 ## show rpn score maps
+                """
                 p = batch_top_probs.reshape(*(top_feature_shape[0:2]), 2 * num_bases)
                 for n in range(num_bases):
                     r=n%num_scales
@@ -455,7 +486,7 @@ def run_train():
                     axs[s,r].cla()
                     axs[s,r].imshow(pn, cmap='gray', vmin=0, vmax=255)
                 plt.pause(0.01)
-
+                """
 				## show rpn(top) nms
 
                 img_rpn     = draw_rpn    (top_image, batch_top_probs, batch_top_deltas, anchors, inside_inds)
@@ -467,7 +498,22 @@ def run_train():
                 img_rcnn     = draw_rcnn(top_image, batch_fuse_probs, batch_fuse_deltas, batch_top_rois, batch_rois3d,darker=1)
                 img_rcnn_nms = draw_rcnn_nms(rgb, boxes3d, probs)
                 cv2.imwrite(out_dir+'rcnn/img_rcnn/img_rcnn%05d.png'%num_save, img_rcnn)
-                cv2.imwrite(out_dir+'img_rcnn_nms/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
+                cv2.imwrite(out_dir+'rcnn/img_rcnn_nms/img_rcnn_nms%05d.png'%num_save, img_rcnn_nms)
+
+                ## Draw GT
+                #img_rpn     = draw_rpn    (top_image, batch_top_probs, batch_top_deltas, anchors, inside_inds)
+                img_rpn_nms = draw_rpn_nms(top_image, batch_proposals, batch_proposal_scores)
+                #cv2.imwrite(out_dir+'rpn/img_rpn/img_rpn_GT_%05d.png'%num_save, img_rpn)
+                #cv2.imwrite(out_dir+'rpn/img_rpn_nms/img_rpn_nms_GT_%05d.png'%num_save, img_rpn_nms)
+
+                ## show rcnn(fuse) nms
+                #img_rcnn     = draw_rcnn(top_image, batch_fuse_probs, batch_fuse_deltas, batch_top_rois, batch_rois3d,darker=1)
+                img_rcnn_nms = draw_rcnn_nms(rgb, batch_gt_boxes3d, probs)
+                #cv2.imwrite(out_dir+'rcnn/img_rcnn/img_rcnn_GT_%05d.png'%num_save, img_rcnn)
+                cv2.imwrite(out_dir+'/rcnn/img_rcnn_nms/img_rcnn_nms_GT_%05d.png'%num_save, img_rcnn_nms)
+
+                #print(batch_gt_boxes3d)
+
                 print ('salam')
                 num_save += 1
             # save: ------------------------------------

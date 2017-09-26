@@ -241,7 +241,8 @@ def box3d_transform_inv(et_boxes3d, deltas):
         scale = (np.sum((e-center)**2)/8)**0.5
 
         d=deltas[n]
-        boxes3d[n]= e+scale*d
+        #print(d)
+        boxes3d[n]= e+scale*d#*np.flip(d,1)
 
     return boxes3d
 

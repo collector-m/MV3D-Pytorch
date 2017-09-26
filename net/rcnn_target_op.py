@@ -61,7 +61,7 @@ def rcnn_target(rois, gt_labels, gt_boxes, gt_boxes3d):
         targets = box_transform(et_boxes, gt_boxes3d)
         #targets = targets / np.array(CFG.TRAIN.RCNN_box_NORMALIZE_STDS)  # this is for each box
     else:
-        et_boxes3d = box_to_box3d(et_boxes)
+        et_boxes3d = top_box_to_box3d(et_boxes)
         targets = box3d_transform(et_boxes3d, gt_boxes3d)
         #exit(0)
 

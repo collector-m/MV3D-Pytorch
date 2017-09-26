@@ -71,6 +71,6 @@ def rcnn_nms( probs,  deltas,  rois3d,  threshold = 0.75):
 
     if deltas.shape[1:]==(8,3):
         boxes3d  = box3d_transform_inv(rois3d, deltas)
-        boxes3d  = regularise_box3d(boxes3d)
+        #boxes3d  = regularise_box3d(boxes3d)
 
         return probs, boxes3d

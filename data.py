@@ -462,7 +462,7 @@ if __name__ == '__main__':
 
     ############# analysis ########################### *************************************
     if 1: ## make mean
-        mean_image = np.zeros((400,400),dtype=np.float32)
+        mean_image = np.zeros((400,400),dtype=np.float32) # awful
         num_frames=20
         for n in range(num_frames):
             print(n)
